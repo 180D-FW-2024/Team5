@@ -2,7 +2,7 @@ import socket
 from pynput import keyboard
 
 # Setup
-HOST = '131.179.11.38'  # RPi's IP address
+HOST = '131.179.40.148'  # RPi's IP address
 PORT = 8080  # Port number, needs to match the server
 
 # Initialize the socket connection
