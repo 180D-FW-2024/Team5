@@ -3,6 +3,7 @@ from PyQt5.QtGui import QPainter, QPen
 from PyQt5.QtCore import Qt, QPoint
 import sys
 import random
+import socket
 
 # Maze generation function
 def generate_maze(n, m):
@@ -45,11 +46,32 @@ class MazeWindow(QMainWindow):
         # Initial player position
         self.player_x, self.player_y = 0, 0
 
+        # Socket connection setup
+        self.server_host = '127.0.0.1' # Replace with RPi's IP address
+        self.server_port = 8080
+        self.socket_client = self.setup_socket_client()
+
         # Add the regenerate button
         self.regenerate_button = QPushButton("Regenerate Maze", self)
         self.regenerate_button.setGeometry(50, 800, 200, 40)  # Position at bottom-left
         self.regenerate_button.clicked.connect(self.regenerate_maze)
 
+        # Add on-screen D-Pad buttons
+        self.setup_dpad()
+
+    def setup_socket_client(self):
+        """Set up the socket client for communication with the RPi"""
+        try:
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.connect((self.server_host, self.server_port))
+            print(f"Connected to server at {self.server_host}:{self.server_port}")
+            return client_socket
+        except Exception as e:
+            print(f"Failed to connect to server: {e}")
+            return None
+
+    def setup_dpad(self):
+        """Set up D-Pad buttons for on-screen control"""
         dpad_center_x = 650
         dpad_center_y = 825
         dpad_button_width = 50
@@ -72,35 +94,61 @@ class MazeWindow(QMainWindow):
         self.down_button.setGeometry(dpad_center_x - int(0.5 * dpad_button_width), dpad_center_y + int(0.5 * dpad_button_height + dpad_button_margin), dpad_button_width, dpad_button_height)
         self.down_button.clicked.connect(lambda: self.movePlayer(2))
 
+    def send_command_to_rpi(self, command):
+        """Send command to RPi"""
+        if self.socket_client:
+            try:
+                self.socket_client.sendall(command.encode())
+                print(f"Send command: {command}")
+            except Exception as e:
+                print(f"Failed to send command: {e}")
 
     def regenerate_maze(self):
         """Regenerate the maze and refresh the display."""
         self.maze = generate_maze(self.n, self.m)
         self.update()  # Refresh the GUI
 
-    def movePlayer(self, dir):
-        """Update player position based on desired direction."""
+    def movePlayer(self, direction):
+        """Update player position and sent movement commands"""
+        commands = ["up", "right", "down", "left"]
+        if 0 <= direction < len(commands):
+            self.send_command_to_rpi(commands[direction])
+        
         px, py = self.player_x, self.player_y
         pcell = self.maze[py][px]
 
-        match dir:
-            case 0:
+        match direction:
+            case 0: # Up (Forward)
                 if not pcell['walls'][0]:
-                    self.player_y = self.player_y - 1
-            case 1:
+                    self.player_y -= 1
+            case 1: # Right
                 if not pcell['walls'][1]:
-                    self.player_x = self.player_x + 1
-            case 2:
+                    self.player_x += 1
+            case 2: # Down (Backward)
                 if not pcell['walls'][2]:
-                    self.player_y = self.player_y + 1
-            case 3:
+                    self.player_y += 1
+            case 3: # Left
                 if not pcell['walls'][3]:
-                    self.player_x = self.player_x - 1
+                    self.player_x -= 1
             case _:
-                print("Error")
+                print("Invalid direction")
         
         self.update()
         # print("(" + str(self.player_x) + ", " + str(self.player_y) + ")")   
+
+    def keyPressEvent(self, event):
+        """Handles keyboard inputs"""
+        if event.key() == Qt.Key_W:
+            self.movePlayer(0) # Up
+        elif event.key() == Qt.Key_D:
+            self.movePlayer(1) # Right
+        elif event.key() == Qt.Key_S:
+            self.movePlayer(2) # Down
+        elif event.key() == Qt.Key_A:
+            self.movePlayer(3) # Left
+        elif event.key() == Qt.Key_Q: # Quit
+            self.send_command_to_rpi("stop")
+            self.close()
 
     def paintEvent(self, event):
         painter = QPainter(self)
