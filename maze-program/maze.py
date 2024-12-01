@@ -1,9 +1,10 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel
 from PyQt5.QtGui import QPainter, QPen
 from PyQt5.QtCore import Qt, QPoint
 import sys
 import random
 import socket
+import threading
 
 # Maze generation function
 def generate_maze(n, m):
@@ -47,7 +48,7 @@ class MazeWindow(QMainWindow):
         self.player_x, self.player_y = 0, 0
 
         # Socket connection setup
-        self.server_host = '127.0.0.1' # Replace with RPi's IP address
+        self.server_host = '192.168.1.69' # Replace with RPi's IP address
         self.server_port = 8080
         self.socket_client = self.setup_socket_client()
 
@@ -56,8 +57,16 @@ class MazeWindow(QMainWindow):
         self.regenerate_button.setGeometry(50, 800, 200, 40)  # Position at bottom-left
         self.regenerate_button.clicked.connect(self.regenerate_maze)
 
+        # Add IMU Data Label
+        self.imu_label = QLabel("IMU Data: N/A", self)
+        self.imu_label.setGeometry(300, 750, 400, 100)
+
         # Add on-screen D-Pad buttons
         self.setup_dpad()
+
+        # Start a background thread to listen for IMU data
+        self.imu_data_thread = threading.Thread(target=self.receive_imu_data, daemon=True)
+        self.imu_data_thread.start()
 
     def setup_socket_client(self):
         """Set up the socket client for communication with the RPi"""
@@ -94,6 +103,25 @@ class MazeWindow(QMainWindow):
         self.down_button.setGeometry(dpad_center_x - int(0.5 * dpad_button_width), dpad_center_y + int(0.5 * dpad_button_height + dpad_button_margin), dpad_button_width, dpad_button_height)
         self.down_button.clicked.connect(lambda: self.movePlayer(2))
 
+    def receive_imu_data(self):
+        """Continuously receive IMU data from the RPi"""
+        if self.socket_client:
+            while True:
+                try:
+                    data = self.socket_client.recv(1024).decode().strip()
+                    if data.startswith("imu_data"):
+                        try:
+                            _, acc_data, gyro_data, mag_data = data.split("|")
+                            acc_values = acc_data.replace("acc:", "")
+                            gyro_values = gyro_data.replace("gyro:", "")
+                            mag_values = mag_data.replace("mag:", "")
+                            self.imu_label.setText(f"IMU Data\nAcc: {acc_values}\nGyro: {gyro_values}\nMag: {mag_values}")
+                        except ValueError:
+                            print("Malformed IMU data received:", data)
+                except Exception as e:
+                    print(f"Failed to receive data: {e}")
+                    break
+    
     def send_command_to_rpi(self, command):
         """Send command to RPi"""
         if self.socket_client:
