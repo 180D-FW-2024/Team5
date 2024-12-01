@@ -16,7 +16,7 @@ def forward():
     gpio.output(23, True)
     gpio.output(24, False)
 
-def reverse():
+def backward():
     gpio.output(17, True)
     gpio.output(22, False)
     gpio.output(23, False)
@@ -60,12 +60,12 @@ try:
             break
 
         print(f"Received command: {data}")
-        if data == 'forward':
+        if data == 'up':
             forward()
             time.sleep(1)
             stop()
-        elif data == 'reverse':
-            reverse()
+        elif data == 'down':
+            backward()
             time.sleep(1)
             stop()
         elif data == 'left':
