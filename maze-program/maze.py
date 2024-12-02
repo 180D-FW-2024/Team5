@@ -57,7 +57,7 @@ class MazeWindow(QMainWindow):
         self.player_dir = Dir.UP.value
 
         # Socket connection setup
-        self.server_host = '192.168.1.69' # Replace with RPi's IP address
+        self.server_host = '131.179.115.88' # Replace with RPi's IP address
         self.server_port = 8080
         self.socket_client = self.setup_socket_client()
 
@@ -180,10 +180,6 @@ class MazeWindow(QMainWindow):
 
     def movePlayer(self):
         """Update player position by moving forward"""
-        
-        # Insert RPI communication stuff here
-        #
-        #
 
         px, py = self.player_x, self.player_y
         pcell = self.maze[py][px]
@@ -193,15 +189,19 @@ class MazeWindow(QMainWindow):
         match direction:
             case Dir.UP.value:      # 0
                 if not pcell['walls'][0]:
+                    self.send_command_to_rpi("forward")
                     self.player_y -= 1
             case Dir.RIGHT.value:   # 1 
                 if not pcell['walls'][1]:
+                    self.send_command_to_rpi("forward")
                     self.player_x += 1
             case Dir.DOWN.value:    # 2
                 if not pcell['walls'][2]:
+                    self.send_command_to_rpi("forward")
                     self.player_y += 1
             case Dir.LEFT.value:    # 3
                 if not pcell['walls'][3]:
+                    self.send_command_to_rpi("forward")
                     self.player_x -= 1
             case _:
                 print("Car is facing an invalid direction")
@@ -212,8 +212,10 @@ class MazeWindow(QMainWindow):
         """Update player status by rotating left or right"""
         """0 = Rotate Left, 1 = Rotate Right"""
         if direction == 0:      # Rotate left
+            self.send_command_to_rpi("left")
             self.player_dir = (self.player_dir - 1) % 4
-        elif direction == 1:    # Rotate right
+        elif direction == 1:    # Rotate right\
+            self.send_command_to_rpi("right")
             self.player_dir = (self.player_dir + 1) % 4
         else:
             print("Invalid rotation direction")
