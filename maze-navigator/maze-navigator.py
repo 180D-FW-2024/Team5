@@ -6,51 +6,51 @@ import IMU
 
 # motor 1 pins
 # ena = 12
-# in1 = 17
-# in2 = 22
+in1 = 17
+in2 = 22
 
 # motor 2 pins
 # enb = 13
-# in3 = 23
-# in4 = 24
+in3 = 23
+in4 = 24
 
 # GPIO Setup
 def init_gpio():
     gpio.setmode(gpio.BCM)
-    gpio.setup(17, gpio.OUT)
-    gpio.setup(22, gpio.OUT)
-    gpio.setup(23, gpio.OUT)
-    gpio.setup(24, gpio.OUT)
+    gpio.setup(in1, gpio.OUT)
+    gpio.setup(in2, gpio.OUT)
+    gpio.setup(in3, gpio.OUT)
+    gpio.setup(in4, gpio.OUT)
 
 def forward():
-    gpio.output(17, False)
-    gpio.output(22, True)
-    gpio.output(23, True)
-    gpio.output(24, False)
+    gpio.output(in1, False)
+    gpio.output(in2, True)
+    gpio.output(in3, True)
+    gpio.output(in4, False)
 
 def backward():
-    gpio.output(17, True)
-    gpio.output(22, False)
-    gpio.output(23, False)
-    gpio.output(24, True)
+    gpio.output(in1, True)
+    gpio.output(in2, False)
+    gpio.output(in3, False)
+    gpio.output(in4, True)
 
 def left_turn():
-    gpio.output(17, True)
-    gpio.output(22, False)
-    gpio.output(23, True)
-    gpio.output(24, False)
+    gpio.output(in1, True)
+    gpio.output(in2, False)
+    gpio.output(in3, True)
+    gpio.output(in4, False)
 
 def right_turn():
-    gpio.output(17, False)
-    gpio.output(22, True)
-    gpio.output(23, False)
-    gpio.output(24, True)
+    gpio.output(in1, False)
+    gpio.output(in2, True)
+    gpio.output(in3, False)
+    gpio.output(in4, True)
 
 def stop():
-    gpio.output(17, False)
-    gpio.output(22, False)
-    gpio.output(23, False)
-    gpio.output(24, False)
+    gpio.output(in1, False)
+    gpio.output(in2, False)
+    gpio.output(in3, False)
+    gpio.output(in4, False)
 
 def process_imu_data():
     acc_x = IMU.readACCx()
