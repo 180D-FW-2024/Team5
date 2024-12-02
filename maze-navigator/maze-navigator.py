@@ -122,10 +122,10 @@ try:
             forward()
             time.sleep(1)
             stop()
-        #elif data == 'left':
-        #    left_turn()
-        #    time.sleep(1)
-        #    stop()
+        elif data == 'left':
+            left_turn()
+            time.sleep(1)
+            stop()
         elif data == 'right':
             right_turn()
             time.sleep(1)
