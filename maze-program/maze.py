@@ -1,10 +1,18 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel
 from PyQt5.QtGui import QPainter, QPen
 from PyQt5.QtCore import Qt, QPoint
+from enum import Enum
 import sys
 import random
 import socket
 import threading
+
+# Universal directions
+class Dir(Enum):
+    UP = 0
+    RIGHT = 1
+    DOWN = 2
+    LEFT = 3
 
 # Maze generation function
 def generate_maze(n, m):
@@ -46,6 +54,7 @@ class MazeWindow(QMainWindow):
 
         # Initial player position
         self.player_x, self.player_y = 0, 0
+        self.player_dir = Dir.UP.value
 
         # Socket connection setup
         self.server_host = '192.168.1.69' # Replace with RPi's IP address
@@ -87,21 +96,21 @@ class MazeWindow(QMainWindow):
         dpad_button_height = 30
         dpad_button_margin = 10   # extra space between buttons
 
-        self.left_button = QPushButton("←", self)
+        self.left_button = QPushButton("↺", self)
         self.left_button.setGeometry(dpad_center_x - int(1.5 * dpad_button_width) - dpad_button_margin, dpad_center_y - int(0.5 * dpad_button_height), dpad_button_width, dpad_button_height)
-        self.left_button.clicked.connect(lambda: self.movePlayer(3))
+        self.left_button.clicked.connect(lambda: self.rotatePlayer(0))
 
         self.up_button = QPushButton("↑", self)
         self.up_button.setGeometry(dpad_center_x - int(0.5 * dpad_button_width), dpad_center_y - int(1.5 * dpad_button_height) - dpad_button_margin, dpad_button_width, dpad_button_height)
-        self.up_button.clicked.connect(lambda: self.movePlayer(0))
+        self.up_button.clicked.connect(lambda: self.movePlayer())
 
-        self.right_button = QPushButton("→", self)
+        self.right_button = QPushButton("↻", self)
         self.right_button.setGeometry(dpad_center_x + int(0.5 * dpad_button_width) + dpad_button_margin, dpad_center_y - int(0.5 * dpad_button_height), dpad_button_width, dpad_button_height)
-        self.right_button.clicked.connect(lambda: self.movePlayer(1))
+        self.right_button.clicked.connect(lambda: self.rotatePlayer(1))
 
-        self.down_button = QPushButton("↓", self)
+        """self.down_button = QPushButton("↓", self)
         self.down_button.setGeometry(dpad_center_x - int(0.5 * dpad_button_width), dpad_center_y + int(0.5 * dpad_button_height + dpad_button_margin), dpad_button_width, dpad_button_height)
-        self.down_button.clicked.connect(lambda: self.movePlayer(2))
+        self.down_button.clicked.connect(lambda: self.movePlayer(2))"""
 
     def receive_imu_data(self):
         """Continuously receive IMU data from the RPi"""
@@ -136,8 +145,12 @@ class MazeWindow(QMainWindow):
         self.maze = generate_maze(self.n, self.m)
         self.update()  # Refresh the GUI
 
-    def movePlayer(self, direction):
-        """Update player position and sent movement commands"""
+
+    """def movePlayer(self, direction):
+        #Update player position and sent movement commands
+        # THIS IS THE OLD VERSION OF THE MOVEPLAYER FUNCTION
+        # DELETE WHEN FULL REPLACEMENT IS COMPLETE
+
         commands = ["up", "right", "down", "left"]
         if 0 <= direction < len(commands):
             self.send_command_to_rpi(commands[direction])
@@ -162,18 +175,61 @@ class MazeWindow(QMainWindow):
                 print("Invalid direction")
         
         self.update()
-        # print("(" + str(self.player_x) + ", " + str(self.player_y) + ")")   
+        # print("(" + str(self.player_x) + ", " + str(self.player_y) + ")")   """
+
+
+    def movePlayer(self):
+        """Update player position by moving forward"""
+        
+        # Insert RPI communication stuff here
+        #
+        #
+
+        px, py = self.player_x, self.player_y
+        pcell = self.maze[py][px]
+
+        direction = self.player_dir
+
+        match direction:
+            case Dir.UP.value:      # 0
+                if not pcell['walls'][0]:
+                    self.player_y -= 1
+            case Dir.RIGHT.value:   # 1 
+                if not pcell['walls'][1]:
+                    self.player_x += 1
+            case Dir.DOWN.value:    # 2
+                if not pcell['walls'][2]:
+                    self.player_y += 1
+            case Dir.LEFT.value:    # 3
+                if not pcell['walls'][3]:
+                    self.player_x -= 1
+            case _:
+                print("Car is facing an invalid direction")
+
+        self.update()
+
+    def rotatePlayer(self, direction):
+        """Update player status by rotating left or right"""
+        """0 = Rotate Left, 1 = Rotate Right"""
+        if direction == 0:      # Rotate left
+            self.player_dir = (self.player_dir - 1) % 4
+        elif direction == 1:    # Rotate right
+            self.player_dir = (self.player_dir + 1) % 4
+        else:
+            print("Invalid rotation direction")
+        self.update()
+
 
     def keyPressEvent(self, event):
         """Handles keyboard inputs"""
         if event.key() == Qt.Key_W:
-            self.movePlayer(0) # Up
+            self.movePlayer() # Up
         elif event.key() == Qt.Key_D:
-            self.movePlayer(1) # Right
+            self.rotatePlayer(1) # Right
         elif event.key() == Qt.Key_S:
-            self.movePlayer(2) # Down
+            pass    # We are removing backwards movement
         elif event.key() == Qt.Key_A:
-            self.movePlayer(3) # Left
+            self.rotatePlayer(0) # Left
         elif event.key() == Qt.Key_Q: # Quit
             self.send_command_to_rpi("stop")
             self.close()
@@ -198,7 +254,25 @@ class MazeWindow(QMainWindow):
 
         painter.setBrush(Qt.red)
         player_pos = QPoint(50 + int(self.cell_size * (self.player_x + 0.5)), 50 + int(self.cell_size * (self.player_y + 0.5)))
+
+        """Delete below when we have a better shape"""
+        test_x_offset, test_y_offset = 0, 0
+
+        if self.player_dir == Dir.UP.value:
+            test_y_offset = -30
+        elif self.player_dir == Dir.RIGHT.value:
+            test_x_offset = 30
+        elif self.player_dir == Dir.DOWN.value:
+            test_y_offset = 30
+        elif self.player_dir == Dir.LEFT.value:
+            test_x_offset = -30
+
+        player_face = QPoint(player_pos.x() + test_x_offset, player_pos.y() + test_y_offset)
+        painter.drawEllipse(player_face, 10, 10)
+        """Delete above whne we have a better shape"""
+
         painter.drawEllipse(player_pos, 25, 25)
+        
 
         # painter.setBrush(Qt.NoBrush)
 
