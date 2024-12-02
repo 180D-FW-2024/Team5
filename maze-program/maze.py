@@ -145,39 +145,6 @@ class MazeWindow(QMainWindow):
         self.maze = generate_maze(self.n, self.m)
         self.update()  # Refresh the GUI
 
-
-    """def movePlayer(self, direction):
-        #Update player position and sent movement commands
-        # THIS IS THE OLD VERSION OF THE MOVEPLAYER FUNCTION
-        # DELETE WHEN FULL REPLACEMENT IS COMPLETE
-
-        commands = ["up", "right", "down", "left"]
-        if 0 <= direction < len(commands):
-            self.send_command_to_rpi(commands[direction])
-        
-        px, py = self.player_x, self.player_y
-        pcell = self.maze[py][px]
-
-        match direction:
-            case 0: # Up (Forward)
-                if not pcell['walls'][0]:
-                    self.player_y -= 1
-            case 1: # Right
-                if not pcell['walls'][1]:
-                    self.player_x += 1
-            case 2: # Down (Backward)
-                if not pcell['walls'][2]:
-                    self.player_y += 1
-            case 3: # Left
-                if not pcell['walls'][3]:
-                    self.player_x -= 1
-            case _:
-                print("Invalid direction")
-        
-        self.update()
-        # print("(" + str(self.player_x) + ", " + str(self.player_y) + ")")   """
-
-
     def movePlayer(self):
         """Update player position by moving forward"""
 
