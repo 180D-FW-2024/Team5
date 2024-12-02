@@ -5,65 +5,52 @@ import threading
 import IMU
 
 # motor 1 pins
-ena = 12
-in1 = 17
-in2 = 22
+# ena = 12
+# in1 = 17
+# in2 = 22
 
 # motor 2 pins
-enb = 13
-in3 = 23
-in4 = 24
+# enb = 13
+# in3 = 23
+# in4 = 24
 
 # GPIO Setup
 def init_gpio():
     gpio.setmode(gpio.BCM)
-    gpio.setup(ena, gpio.OUT)
-    gpio.setup(enb, gpio.OUT)
-    gpio.setup(in1, gpio.OUT)
-    gpio.setup(in2, gpio.OUT)
-    gpio.setup(in3, gpio.OUT)
-    gpio.setup(in4, gpio.OUT)
+    gpio.setup(17, gpio.OUT)
+    gpio.setup(22, gpio.OUT)
+    gpio.setup(23, gpio.OUT)
+    gpio.setup(24, gpio.OUT)
 
 def forward():
-    gpio.output(ena, True)
-    gpio.output(in1, False)
-    gpio.output(in2, True)
-    gpio.output(enb, True)
-    gpio.output(in3, True)
-    gpio.output(in4, False)
+    gpio.output(17, False)
+    gpio.output(22, True)
+    gpio.output(23, True)
+    gpio.output(24, False)
 
-# car only moves forward
-#def backward():
-#    gpio.output(ena, True)
-#    gpio.output(in1, True)
-#    gpio.output(in2, False)
-#    gpio.output(enb, True)
-#    gpio.output(in3, False)
-#    gpio.output(in4, True)
+def backward():
+    gpio.output(17, True)
+    gpio.output(22, False)
+    gpio.output(23, False)
+    gpio.output(24, True)
 
 def left_turn():
-    gpio.output(ena, True)
-    gpio.output(in1, True)
-    gpio.output(in2, False)
-    gpio.output(enb, True)
-    gpio.output(in3, True)
-    gpio.output(in4, False)
+    gpio.output(17, True)
+    gpio.output(22, False)
+    gpio.output(23, True)
+    gpio.output(24, False)
 
 def right_turn():
-    gpio.output(ena, True)
-    gpio.output(in1, False)
-    gpio.output(in2, True)
-    gpio.output(enb, True)
-    gpio.output(in3, False)
-    gpio.output(in4, True)
+    gpio.output(17, False)
+    gpio.output(22, True)
+    gpio.output(23, False)
+    gpio.output(24, True)
 
 def stop():
-    gpio.output(ena, True)
-    gpio.output(in1, False)
-    gpio.output(in2, False)
-    gpio.output(enb, True)
-    gpio.output(in3, False)
-    gpio.output(in4, False)
+    gpio.output(17, False)
+    gpio.output(22, False)
+    gpio.output(23, False)
+    gpio.output(24, False)
 
 def process_imu_data():
     acc_x = IMU.readACCx()
