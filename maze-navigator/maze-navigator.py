@@ -118,17 +118,19 @@ try:
 
         print(f"Received command: {data}")
 
+        x = 0.5
+
         if data == 'forward':
             forward()
-            time.sleep(1)
+            time.sleep(x)
             stop()
         elif data == 'left':
             left_turn()
-            time.sleep(1)
+            time.sleep(x)
             stop()
         elif data == 'right':
             right_turn()
-            time.sleep(1)
+            time.sleep(x)
             stop()
         elif data == 'stop':
             stop()
