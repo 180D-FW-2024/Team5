@@ -1,16 +1,16 @@
 import socket
-import RPi.GPIO as gpio # type: ignore
+import RPi.GPIO as gpio
 import time
 import threading
 import IMU
+import struct
+import pickle
+from picamera2 import Picamera2
+import cv2
 
-# motor 1 pins
-# ena = 12
+# Motor pins
 in1 = 17
 in2 = 22
-
-# motor 2 pins
-# enb = 13
 in3 = 23
 in4 = 24
 
@@ -72,7 +72,8 @@ def process_imu_data():
 
 # Server Setup
 HOST = ''  # Listen on all available interfaces
-PORT = 8080  # Port number, ensure it matches the maze software port
+PORT = 8080  # Port for command/IMU data
+CAMERA_PORT = 8081  # Port for camera stream
 
 running = True
 
@@ -81,13 +82,43 @@ def imu_data_sender(conn):
     global running
     while running:
         imu_data = process_imu_data()
-        imu_message = f"imu_data|acc:{imu_data['acc']}|gyro:{imu_data['gyro']}|mag:{imu_data['mag']}"
+        imu_message = f"imu_data|acc:{imu_data['acc']}|gyro:{imu_data['gyro']}|mag:{imu_data['mag']}\n"
         try:
             conn.sendall(imu_message.encode())
         except Exception as e:
             print(f"Error sending IMU data: {e}")
             break
         time.sleep(0.1)  # Send data every 100ms
+
+def start_camera_stream():
+    """Stream camera frames to the client."""
+    global running
+    picam2 = Picamera2()
+    picam2.configure(picam2.create_preview_configuration(main={"size": (640, 480)}))
+    picam2.start()
+
+    camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    camera_socket.bind((HOST, CAMERA_PORT))
+    camera_socket.listen(1)
+    print("Waiting for camera connection...")
+    conn, addr = camera_socket.accept()
+    print(f"Camera connected by {addr}")
+
+    try:
+        while running:
+            frame = picam2.capture_array()
+            # Convert frame to RGB
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Serialize and send the frame
+            data = pickle.dumps(frame)
+            conn.sendall(struct.pack("L", len(data)) + data)
+    except Exception as e:
+        print(f"Camera stream error: {e}")
+    finally:
+        picam2.stop()
+        conn.close()
+        camera_socket.close()
 
 try:
     # GPIO Initialization
@@ -99,14 +130,19 @@ try:
     IMU.initIMU()    # Initialize IMU sensors
     print("IMU Initialized.")
 
-    print("Waiting for connection...")
+    # Start camera stream thread
+    camera_thread = threading.Thread(target=start_camera_stream, daemon=True)
+    camera_thread.start()
+
+    # Command server setup
+    print("Waiting for command connection...")
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind((HOST, PORT))
     sock.listen(1)
     conn, addr = sock.accept()
     print(f"Connected by {addr}")
 
-    # Start a thread for sending IMU data
+    # Start IMU data thread
     imu_thread = threading.Thread(target=imu_data_sender, args=(conn,), daemon=True)
     imu_thread.start()
 
@@ -136,9 +172,11 @@ try:
             print(f"Unknown command: {data}")
 
 finally:
-    running = False  # Stop the IMU thread
+    running = False  # Stop the IMU and camera threads
     if imu_thread.is_alive():
-        imu_thread.join()  # Ensure the thread is closed
+        imu_thread.join()
+    if camera_thread.is_alive():
+        camera_thread.join()
     stop()
     gpio.cleanup()
     sock.close()

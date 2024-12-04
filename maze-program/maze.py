@@ -1,11 +1,13 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel
-from PyQt5.QtGui import QPainter, QPen
+from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap
 from PyQt5.QtCore import Qt, QPoint
 from enum import Enum
 import sys
 import random
 import socket
 import threading
+import struct
+import pickle
 
 # Universal directions
 class Dir(Enum):
@@ -57,8 +59,9 @@ class MazeWindow(QMainWindow):
         self.player_dir = Dir.UP.value
 
         # Socket connection setup
-        self.server_host = '131.179.115.88' # Replace with RPi's IP address
+        self.server_host = '172.20.10.6' # Replace with RPi's IP address
         self.server_port = 8080
+        self.camera_port = 8081
         self.socket_client = self.setup_socket_client()
 
         # Add the regenerate button
@@ -70,12 +73,21 @@ class MazeWindow(QMainWindow):
         self.imu_label = QLabel("IMU Data: N/A", self)
         self.imu_label.setGeometry(300, 750, 400, 100)
 
+        # Add Camera Label
+        self.camera_label = QLabel(self)
+        self.camera_label.setGeometry(200, 100, 640, 480)
+        self.camera_label.setStyleSheet("border: 1px solid black;")
+
         # Add on-screen D-Pad buttons
         self.setup_dpad()
 
         # Start a background thread to listen for IMU data
         self.imu_data_thread = threading.Thread(target=self.receive_imu_data, daemon=True)
         self.imu_data_thread.start()
+
+        # Start thread for camera
+        self.camera_thread = threading.Thread(target=self.receive_camera_data, daemon=True)
+        self.camera_thread.start()
 
     def setup_socket_client(self):
         """Set up the socket client for communication with the RPi"""
@@ -115,21 +127,67 @@ class MazeWindow(QMainWindow):
     def receive_imu_data(self):
         """Continuously receive IMU data from the RPi"""
         if self.socket_client:
+            buffer = ""
             while True:
                 try:
-                    data = self.socket_client.recv(1024).decode().strip()
-                    if data.startswith("imu_data"):
-                        try:
-                            _, acc_data, gyro_data, mag_data = data.split("|")
-                            acc_values = acc_data.replace("acc:", "")
-                            gyro_values = gyro_data.replace("gyro:", "")
-                            mag_values = mag_data.replace("mag:", "")
-                            self.imu_label.setText(f"IMU Data\nAcc: {acc_values}\nGyro: {gyro_values}\nMag: {mag_values}")
-                        except ValueError:
-                            print("Malformed IMU data received:", data)
+                    # Read data from the socket
+                    data = self.socket_client.recv(2048).decode()
+                    if not data:
+                        break  # Connection closed
+
+                    # Add data to buffer and process complete messages
+                    buffer += data
+                    while "\n" in buffer:
+                        message, buffer = buffer.split("\n", 1)  # Split at the first newline
+                        self.process_imu_message(message.strip())
                 except Exception as e:
                     print(f"Failed to receive data: {e}")
                     break
+
+    def process_imu_message(self, message):
+        """Process a single IMU message."""
+        if message.startswith("imu_data"):
+            try:
+                _, acc_data, gyro_data, mag_data = message.split("|")
+                acc_values = acc_data.replace("acc:", "")
+                gyro_values = gyro_data.replace("gyro:", "")
+                mag_values = mag_data.replace("mag:", "")
+                self.imu_label.setText(f"IMU Data\nAcc: {acc_values}\nGyro: {gyro_values}\nMag: {mag_values}")
+            except ValueError:
+                print("Malformed IMU data received:", message)
+
+    def receive_camera_data(self):
+        try:
+            camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            camera_socket.connect((self.server_host, self.camera_port))
+            data = b""
+
+            while True:
+                # Receive frame length
+                while len(data) < struct.calcsize("L"):
+                    data += camera_socket.recv(4096)
+                packed_len = data[:struct.calcsize("L")]
+                data = data[struct.calcsize("L"):]
+                frame_len = struct.unpack("L", packed_len)[0]
+
+                # Receive frame data
+                while len(data) < frame_len:
+                    data += camera_socket.recv(4096)
+                frame_data = data[:frame_len]
+                data = data[frame_len:]
+
+                # Deserialize frame
+                frame = pickle.loads(frame_data)
+
+                # Convert to QImage and display
+                height, width, channel = frame.shape
+                bytes_per_line = channel * width
+                qimg = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
+                pixmap = QPixmap.fromImage(qimg)
+
+                self.camera_label.setPixmap(pixmap)
+        except Exception as e:
+            print(f"Failed to receive camera data: {e}")
     
     def send_command_to_rpi(self, command):
         """Send command to RPi"""
