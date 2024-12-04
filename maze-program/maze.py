@@ -71,11 +71,19 @@ class MazeWindow(QMainWindow):
 
         # Add IMU Data Label
         self.imu_label = QLabel("IMU Data: N/A", self)
-        self.imu_label.setGeometry(300, 750, 400, 100)
+        self.imu_label.setGeometry(775, 650, 640, 200)  # Centered below the camera feed
+        self.imu_label.setAlignment(Qt.AlignCenter)
+        self.imu_label.setStyleSheet("font-size: 14px; font-weight: bold;")
+
+        # Add Camera Feed Label
+        self.camera_feed_label = QLabel("Camera Feed", self)
+        self.camera_feed_label.setGeometry(775, 75, 640, 20)  # Positioned above the camera feed
+        self.camera_feed_label.setAlignment(Qt.AlignCenter)
+        self.camera_feed_label.setStyleSheet("font-size: 16px; font-weight: bold;")
 
         # Add Camera Label
         self.camera_label = QLabel(self)
-        self.camera_label.setGeometry(200, 100, 640, 480)
+        self.camera_label.setGeometry(775, 100, 640, 480)
         self.camera_label.setStyleSheet("border: 1px solid black;")
 
         # Add on-screen D-Pad buttons
