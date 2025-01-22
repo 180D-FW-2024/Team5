@@ -195,24 +195,27 @@ class MazeWindow(QMainWindow):
                     command = r.recognize_whisper(audio, model="small.en").lower().strip()
                     print(f"Recognized voice command: {command}")
 
-                    # Match the command to allowed keywords
-                    closest_match = difflib.get_close_matches(command, allowed_keywords, n=1, cutoff=0.6)
-                    if closest_match:
-                        matched_command = closest_match[0]
-                        print(f"Matched command: {matched_command}")
+                    # Split the command into words and analyze each one
+                    words = command.split()
+                    for word in words:
+                        # Match each word to allowed keywords
+                        closest_match = difflib.get_close_matches(word, allowed_keywords, n=1, cutoff=0.6)
+                        if closest_match:
+                            matched_command = closest_match[0]
+                            print(f"Matched command: {matched_command}")
 
-                        if matched_command == "forward":
-                            self.movePlayer()
-                        elif matched_command == "left":
-                            self.rotatePlayer(0)
-                        elif matched_command == "right":
-                            self.rotatePlayer(1)
-                        elif matched_command == "quit": # Might have to remove this
-                            self.is_listening = False
-                            self.close()
-                            return
-                    else:
-                        print("No valid command recognized")
+                            if matched_command == "forward":
+                                self.movePlayer()
+                            elif matched_command == "left":
+                                self.rotatePlayer(0)
+                            elif matched_command == "right":
+                                self.rotatePlayer(1)
+                            elif matched_command == "quit":
+                                self.is_listening = False
+                                self.close()
+                                return
+                        else:
+                            print(f"No valid command recognized")
                 except sr.UnknownValueError:
                     print("Could not understand audio")
                 except sr.RequestError as e:
