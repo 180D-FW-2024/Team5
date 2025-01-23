@@ -6,8 +6,8 @@ import sys
 import random
 import socket
 import threading
-import struct
-import pickle
+# import struct
+# import pickle
 
 # Universal directions
 class Dir(Enum):
@@ -61,7 +61,7 @@ class MazeWindow(QMainWindow):
         # Socket connection setup
         self.server_host = '172.20.10.6' # Replace with RPi's IP address
         self.server_port = 8080
-        self.camera_port = 8081
+        # self.camera_port = 8081
         self.socket_client = self.setup_socket_client()
 
         # Add the regenerate button
@@ -76,15 +76,15 @@ class MazeWindow(QMainWindow):
         self.imu_label.setStyleSheet("font-size: 14px; font-weight: bold;")
 
         # Add Camera Feed Label
-        self.camera_feed_label = QLabel("Camera Feed", self)
-        self.camera_feed_label.setGeometry(775, 75, 640, 20)  # Positioned above the camera feed
-        self.camera_feed_label.setAlignment(Qt.AlignCenter)
-        self.camera_feed_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        # self.camera_feed_label = QLabel("Camera Feed", self)
+        # self.camera_feed_label.setGeometry(775, 75, 640, 20)  # Positioned above the camera feed
+        # self.camera_feed_label.setAlignment(Qt.AlignCenter)
+        # self.camera_feed_label.setStyleSheet("font-size: 16px; font-weight: bold;")
 
         # Add Camera Label
-        self.camera_label = QLabel(self)
-        self.camera_label.setGeometry(775, 100, 640, 480)
-        self.camera_label.setStyleSheet("border: 1px solid black;")
+        # self.camera_label = QLabel(self)
+        # self.camera_label.setGeometry(775, 100, 640, 480)
+        # self.camera_label.setStyleSheet("border: 1px solid black;")
 
         # Add on-screen D-Pad buttons
         self.setup_dpad()
@@ -94,8 +94,8 @@ class MazeWindow(QMainWindow):
         self.imu_data_thread.start()
 
         # Start thread for camera
-        self.camera_thread = threading.Thread(target=self.receive_camera_data, daemon=True)
-        self.camera_thread.start()
+        # self.camera_thread = threading.Thread(target=self.receive_camera_data, daemon=True)
+        # self.camera_thread.start()
 
     def setup_socket_client(self):
         """Set up the socket client for communication with the RPi"""
@@ -164,38 +164,39 @@ class MazeWindow(QMainWindow):
             except ValueError:
                 print("Malformed IMU data received:", message)
 
-    def receive_camera_data(self):
-        try:
-            camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            camera_socket.connect((self.server_host, self.camera_port))
-            data = b""
 
-            while True:
+#    def receive_camera_data(self):
+#       try:
+#            camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#            camera_socket.connect((self.server_host, self.camera_port))
+#            data = b""
+
+#            while True:
                 # Receive frame length
-                while len(data) < struct.calcsize("L"):
-                    data += camera_socket.recv(4096)
-                packed_len = data[:struct.calcsize("L")]
-                data = data[struct.calcsize("L"):]
-                frame_len = struct.unpack("L", packed_len)[0]
+#                while len(data) < struct.calcsize("L"):
+#                    data += camera_socket.recv(4096)
+#                packed_len = data[:struct.calcsize("L")]
+#                data = data[struct.calcsize("L"):]
+#                frame_len = struct.unpack("L", packed_len)[0]
 
                 # Receive frame data
-                while len(data) < frame_len:
-                    data += camera_socket.recv(4096)
-                frame_data = data[:frame_len]
-                data = data[frame_len:]
+#                while len(data) < frame_len:
+#                    data += camera_socket.recv(4096)
+#                frame_data = data[:frame_len]
+#                data = data[frame_len:]
 
                 # Deserialize frame
-                frame = pickle.loads(frame_data)
+#                frame = pickle.loads(frame_data)
 
                 # Convert to QImage and display
-                height, width, channel = frame.shape
-                bytes_per_line = channel * width
-                qimg = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
-                pixmap = QPixmap.fromImage(qimg)
+#                height, width, channel = frame.shape
+#                bytes_per_line = channel * width
+#                qimg = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
+#                pixmap = QPixmap.fromImage(qimg)
 
-                self.camera_label.setPixmap(pixmap)
-        except Exception as e:
-            print(f"Failed to receive camera data: {e}")
+#                self.camera_label.setPixmap(pixmap)
+#        except Exception as e:
+#            print(f"Failed to receive camera data: {e}")
     
     def send_command_to_rpi(self, command):
         """Send command to RPi"""
