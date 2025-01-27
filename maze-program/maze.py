@@ -106,7 +106,7 @@ class MazeWindow(QMainWindow):
             print("Connection with Button RPi closed.")
 
         # Socket connection setup
-        self.server_host = '172.20.10.6' # Maze Navigator Tailscale IP
+        self.server_host = '100.94.211.35' # Maze Navigator Tailscale IP
         self.server_port = 8080
         # self.camera_port = 8081
         self.socket_client = self.setup_socket_client()
