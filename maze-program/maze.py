@@ -58,8 +58,55 @@ class MazeWindow(QMainWindow):
         self.player_x, self.player_y = 0, 0
         self.player_dir = Dir.UP.value
 
+        # initialize socket connection
+        self.socket_client = None
+
+        # Start Button server
+        self.server_host = '0.0.0.0'  # Listen on all interfaces
+        self.button_server_thread = threading.Thread(target=self.start_button_server, daemon=True)
+        self.button_server_thread.start()
+
+    def start_button_server(self):
+        """Start a server to handle persistent connections from RPi Controller."""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+                server_socket.bind((self.server_host, 9090))  # Port for RPi Controller
+                server_socket.listen(5)
+                print(f"Button server listening on {self.server_host}:9090")
+
+                while True:
+                    conn, addr = server_socket.accept()
+                    print(f"Connected to Button RPi: {addr}")
+                    threading.Thread(target=self.handle_button_commands, args=(conn,), daemon=True).start()
+        except Exception as e:
+            print(f"Button server error: {e}")
+
+    def handle_button_commands(self, conn):
+        """Handle incoming commands from RPi Controller."""
+        try:
+            while True:
+                data = conn.recv(1024).decode().strip()  # Receive data
+                if not data:
+                    break  # Connection closed
+                print(f"Received button command: {data}")
+
+                # Map commands to actions
+                if data == 'w':
+                    self.movePlayer()
+                elif data == 'a':
+                    self.rotatePlayer(0)
+                elif data == 'd':
+                    self.rotatePlayer(1)
+                else:
+                    print(f"Unknown button command: {data}")
+        except Exception as e:
+            print(f"Error handling button commands: {e}")
+        finally:
+            conn.close()
+            print("Connection with Button RPi closed.")
+
         # Socket connection setup
-        self.server_host = '172.20.10.6' # Replace with RPi's IP address
+        self.server_host = '172.20.10.6' # Maze Navigator Tailscale IP
         self.server_port = 8080
         # self.camera_port = 8081
         self.socket_client = self.setup_socket_client()
