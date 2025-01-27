@@ -15,7 +15,7 @@ GPIO.setwarnings(False)
 for pin in BUTTONS:
     GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Pull-up resistor
 
-# Server connection details (MacBook running maze.py)
+# Server connection details
 SERVER_IP = '100.107.224.80'  # Maze Program Tailscale IP
 SERVER_PORT = 9090
 
