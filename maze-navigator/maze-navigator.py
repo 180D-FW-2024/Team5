@@ -71,7 +71,7 @@ def process_imu_data():
     return imu_data
 
 # Server Setup
-HOST = '0.0.0.0'  # Listen on all available interfaces
+HOST = ''  # Listen on all available interfaces
 PORT = 8080  # Port for command/IMU data
 # CAMERA_PORT = 8081  # Port for camera stream
 
