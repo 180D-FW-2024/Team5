@@ -57,6 +57,8 @@ def start_controller_server():
         print(f"Server error: {e}")
     finally:
         running = False
-        server_socket.close()
         GPIO.cleanup()
         print("Controller server closed.")
+
+# start the server
+start_controller_server()

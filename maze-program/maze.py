@@ -68,7 +68,7 @@ class MazeWindow(QMainWindow):
             self.controller_thread = threading.Thread(target=self.listen_to_controller, daemon=True)
             self.controller_thread.start()
 
-        # Socket connection setup
+        # Socket connection setup for Maze Navigator
         self.server_host = '100.94.211.35' # Maze Navigator Tailscale IP
         self.server_port = 8080
         # self.camera_port = 8081
@@ -108,7 +108,7 @@ class MazeWindow(QMainWindow):
         # self.camera_thread.start()
 
     def setup_controller_client(self):
-        """Set up a client socket to connect to `controller.py`."""
+        """Set up a client socket to connect to 'controller.py'."""
         try:
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client_socket.connect((self.controller_host, self.controller_port))
@@ -142,14 +142,14 @@ class MazeWindow(QMainWindow):
             self.controller_client.close()
 
     def setup_socket_client(self):
-        """Set up the socket client for communication with the RPi"""
+        """Set up the socket client for communication with the Maze Navigator"""
         try:
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client_socket.connect((self.server_host, self.server_port))
-            print(f"Connected to server at {self.server_host}:{self.server_port}")
+            print(f"Connected to Maze Navigator at {self.server_host}:{self.server_port}")
             return client_socket
         except Exception as e:
-            print(f"Failed to connect to server: {e}")
+            print(f"Failed to connect to Maze Navigator: {e}")
             return None
 
     def setup_dpad(self):
