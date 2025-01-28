@@ -35,10 +35,28 @@ def listen_for_buttons(conn):
                     time.sleep(0.3)  # Debounce delay
     except (ConnectionResetError, BrokenPipeError):
         print("Connection to maze.py lost.")
+        running = False
     except Exception as e:
         print(f"Error in button listener: {e}")
+        running = False
     finally:
         print("Stopping button listener...")
+
+def send_heartbeat(conn):
+    """Send periodic heartbeat messages to maze.py."""
+    global running
+    try:
+        while running:
+            conn.sendall("heartbeat\n".encode())  # Send a heartbeat message
+            time.sleep(2)  # Wait 2 seconds before sending the next heartbeat
+    except (ConnectionResetError, BrokenPipeError):
+        print("Connection to maze.py lost during heartbeat.")
+        running = False
+    except Exception as e:
+        print(f"Error sending heartbeat: {e}")
+        running = False
+    finally:
+        print("Heartbeat thread stopped.")
 
 def monitor_connection(conn):
     """Monitor the connection to maze.py and stop if it's lost."""
@@ -46,7 +64,6 @@ def monitor_connection(conn):
     try:
         while running:
             try:
-                # Try to receive a heartbeat or check if the connection is alive
                 conn.settimeout(2.0)  # Set a timeout for receiving data
                 data = conn.recv(1024)  # Attempt to receive data
                 if not data:
@@ -55,7 +72,6 @@ def monitor_connection(conn):
                     break
             except socket.timeout:
                 # No data received within the timeout, assume connection is still alive
-                print("No data received, but connection is still alive.")
                 continue
             except (ConnectionResetError, BrokenPipeError):
                 print("Maze.py connection lost.")
@@ -77,6 +93,10 @@ try:
     conn, addr = sock.accept()
     print(f"Connected by {addr}")
 
+    # Start a thread to send heartbeats
+    heartbeat_thread = threading.Thread(target=send_heartbeat, args=(conn,), daemon=True)
+    heartbeat_thread.start()
+
     # Start a thread to monitor the connection
     monitor_thread = threading.Thread(target=monitor_connection, args=(conn,), daemon=True)
     monitor_thread.start()
@@ -86,6 +106,7 @@ try:
 
     # Wait for the monitor thread to finish
     monitor_thread.join()
+    heartbeat_thread.join()  # Wait for the heartbeat thread to finish
 
 except KeyboardInterrupt:
     print("Exiting server...")

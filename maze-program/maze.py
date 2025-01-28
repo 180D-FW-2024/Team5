@@ -116,9 +116,13 @@ class MazeWindow(QMainWindow):
         """Set up a client socket to connect to 'controller.py'."""
         try:
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.settimeout(5.0)  # Timeout after 5 seconds
             client_socket.connect((self.controller_host, self.controller_port))
             print(f"Connected to Controller at {self.controller_host}:{self.controller_port}")
             return client_socket
+        except socket.timeout:
+            print("Controller connection timed out.")
+            return None
         except Exception as e:
             print(f"Failed to connect to Controller: {e}")
             return None
@@ -130,6 +134,8 @@ class MazeWindow(QMainWindow):
                 data = self.controller_client.recv(1024).decode().strip()
                 if not data:
                     break  # Connection closed
+                if data == "heartbeat":
+                    continue  # Ignore heartbeat messages
                 print(f"Received command from Controller: {data}")
 
                 # Map commands to actions
@@ -150,9 +156,13 @@ class MazeWindow(QMainWindow):
         """Set up the socket client for communication with the Maze Navigator"""
         try:
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.settimeout(5.0)  # Timeout after 5 seconds
             client_socket.connect((self.server_host, self.server_port))
             print(f"Connected to Maze Navigator at {self.server_host}:{self.server_port}")
             return client_socket
+        except socket.timeout:
+            print("Maze Navigator connection timed out.")
+            return None
         except Exception as e:
             print(f"Failed to connect to Maze Navigator: {e}")
             return None
