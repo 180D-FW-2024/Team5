@@ -11,3 +11,5 @@ portaudio -> brew install portaudio
 OpenAI Whisper -> pip install -U openai-whisper
 
 ffmpeg -> brew install ffmpeg
+
+pip install torch torchvision torchaudio
