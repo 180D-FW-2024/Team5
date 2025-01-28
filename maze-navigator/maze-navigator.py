@@ -1,5 +1,5 @@
 import socket
-import RPi.GPIO as gpio
+import RPi.GPIO as GPIO
 import time
 import threading
 import IMU
@@ -15,42 +15,42 @@ in3 = 23
 in4 = 24
 
 # GPIO Setup
-def init_gpio():
-    gpio.setmode(gpio.BCM)
-    gpio.setup(in1, gpio.OUT)
-    gpio.setup(in2, gpio.OUT)
-    gpio.setup(in3, gpio.OUT)
-    gpio.setup(in4, gpio.OUT)
+def init_GPIO():
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(in1, GPIO.OUT)
+    GPIO.setup(in2, GPIO.OUT)
+    GPIO.setup(in3, GPIO.OUT)
+    GPIO.setup(in4, GPIO.OUT)
 
 def forward():
-    gpio.output(in1, False)
-    gpio.output(in2, True)
-    gpio.output(in3, True)
-    gpio.output(in4, False)
+    GPIO.output(in1, False)
+    GPIO.output(in2, True)
+    GPIO.output(in3, True)
+    GPIO.output(in4, False)
 
 def backward():
-    gpio.output(in1, True)
-    gpio.output(in2, False)
-    gpio.output(in3, False)
-    gpio.output(in4, True)
+    GPIO.output(in1, True)
+    GPIO.output(in2, False)
+    GPIO.output(in3, False)
+    GPIO.output(in4, True)
 
 def left_turn():
-    gpio.output(in1, True)
-    gpio.output(in2, False)
-    gpio.output(in3, True)
-    gpio.output(in4, False)
+    GPIO.output(in1, True)
+    GPIO.output(in2, False)
+    GPIO.output(in3, True)
+    GPIO.output(in4, False)
 
 def right_turn():
-    gpio.output(in1, False)
-    gpio.output(in2, True)
-    gpio.output(in3, False)
-    gpio.output(in4, True)
+    GPIO.output(in1, False)
+    GPIO.output(in2, True)
+    GPIO.output(in3, False)
+    GPIO.output(in4, True)
 
 def stop():
-    gpio.output(in1, False)
-    gpio.output(in2, False)
-    gpio.output(in3, False)
-    gpio.output(in4, False)
+    GPIO.output(in1, False)
+    GPIO.output(in2, False)
+    GPIO.output(in3, False)
+    GPIO.output(in4, False)
 
 def process_imu_data():
     acc_x = IMU.readACCx()
@@ -122,7 +122,7 @@ def imu_data_sender(conn):
 
 try:
     # GPIO Initialization
-    init_gpio()
+    init_GPIO()
 
     # IMU Initialization
     print("Detecting IMU...")
@@ -178,6 +178,6 @@ finally:
 #     if camera_thread.is_alive():
 #        camera_thread.join()
     stop()
-    gpio.cleanup()
+    GPIO.cleanup()
     sock.close()
     print("Server closed.")
