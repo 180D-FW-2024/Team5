@@ -58,52 +58,15 @@ class MazeWindow(QMainWindow):
         self.player_x, self.player_y = 0, 0
         self.player_dir = Dir.UP.value
 
-        # initialize socket connection
-        self.socket_client = None
+        # Controller server details
+        self.controller_host = '100.122.70.122'  # Maze Controller Tailscale IP
+        self.controller_port = 9090
+        self.controller_client = self.setup_controller_client()
 
-        # Start Button server
-        self.server_host = '0.0.0.0'  # Listen on all interfaces
-        self.button_server_thread = threading.Thread(target=self.start_button_server, daemon=True)
-        self.button_server_thread.start()
-
-    def start_button_server(self):
-        """Start a server to handle persistent connections from RPi Controller."""
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-                server_socket.bind((self.server_host, 9090))  # Port for RPi Controller
-                server_socket.listen(5)
-                print(f"Button server listening on {self.server_host}:9090")
-
-                while True:
-                    conn, addr = server_socket.accept()
-                    print(f"Connected to Button RPi: {addr}")
-                    threading.Thread(target=self.handle_button_commands, args=(conn,), daemon=True).start()
-        except Exception as e:
-            print(f"Button server error: {e}")
-
-    def handle_button_commands(self, conn):
-        """Handle incoming commands from RPi Controller."""
-        try:
-            while True:
-                data = conn.recv(1024).decode().strip()  # Receive data
-                if not data:
-                    break  # Connection closed
-                print(f"Received button command: {data}")
-
-                # Map commands to actions
-                if data == 'w':
-                    self.movePlayer()
-                elif data == 'a':
-                    self.rotatePlayer(0)
-                elif data == 'd':
-                    self.rotatePlayer(1)
-                else:
-                    print(f"Unknown button command: {data}")
-        except Exception as e:
-            print(f"Error handling button commands: {e}")
-        finally:
-            conn.close()
-            print("Connection with Button RPi closed.")
+        # Start listening for commands from `controller.py`
+        if self.controller_client:
+            self.controller_thread = threading.Thread(target=self.listen_to_controller, daemon=True)
+            self.controller_thread.start()
 
         # Socket connection setup
         self.server_host = '100.94.211.35' # Maze Navigator Tailscale IP
@@ -143,6 +106,40 @@ class MazeWindow(QMainWindow):
         # Start thread for camera
         # self.camera_thread = threading.Thread(target=self.receive_camera_data, daemon=True)
         # self.camera_thread.start()
+
+    def setup_controller_client(self):
+        """Set up a client socket to connect to `controller.py`."""
+        try:
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.connect((self.controller_host, self.controller_port))
+            print(f"Connected to Controller at {self.controller_host}:{self.controller_port}")
+            return client_socket
+        except Exception as e:
+            print(f"Failed to connect to Controller: {e}")
+            return None
+        
+    def listen_to_controller(self):
+        """Continuously listen for commands from `controller.py`."""
+        try:
+            while True:
+                data = self.controller_client.recv(1024).decode().strip()
+                if not data:
+                    break  # Connection closed
+                print(f"Received command from Controller: {data}")
+
+                # Map commands to actions
+                if data == 'w':
+                    self.movePlayer()
+                elif data == 'a':
+                    self.rotatePlayer(0)
+                elif data == 'd':
+                    self.rotatePlayer(1)
+                else:
+                    print(f"Unknown command: {data}")
+        except Exception as e:
+            print(f"Error receiving data from Controller: {e}")
+        finally:
+            self.controller_client.close()
 
     def setup_socket_client(self):
         """Set up the socket client for communication with the RPi"""

@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 import socket
+import threading
 import time
 
 # Button GPIO pins
@@ -15,24 +16,47 @@ GPIO.setwarnings(False)
 for pin in BUTTONS:
     GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Pull-up resistor
 
-# Server connection details
-SERVER_IP = '100.107.224.80'  # Maze Program Tailscale IP
-SERVER_PORT = 9090
+# Server setup
+HOST = ''  # Listen on all interfaces
+PORT = 9090  # Port to communicate with maze.py
 
-try:
-    # Create and maintain a persistent connection
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
-        client.connect((SERVER_IP, SERVER_PORT))
-        print(f"Connected to server at {SERVER_IP}:{SERVER_PORT}")
+running = True
 
+def listen_for_buttons(conn):
+    """Listen for GPIO button presses and send commands to maze.py."""
+    try:
         print("Listening for button presses...")
-        while True:
+        while running:
             for pin, command in BUTTONS.items():
                 if GPIO.input(pin) == GPIO.LOW:  # Button pressed
                     print(f"Button {pin} pressed, sending '{command}'")
-                    client.sendall(command.encode())  # Send command
+                    conn.sendall(command.encode())  # Send the command
                     time.sleep(0.3)  # Debounce delay
-except KeyboardInterrupt:
-    print("Exiting...")
-finally:
-    GPIO.cleanup()
+    except Exception as e:
+        print(f"Error sending GPIO commands: {e}")
+    finally:
+        GPIO.cleanup()
+
+def start_controller_server():
+    """Start the controller server to handle connections from maze.py."""
+    global running
+    try:
+        # Set up the server socket
+        print("Waiting for connection from maze.py...")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+            server_socket.bind((HOST, PORT))
+            server_socket.listen(1)
+            conn, addr = server_socket.accept()
+            print(f"Connected to maze.py: {addr}")
+
+            # Start listening for button presses
+            listen_for_buttons(conn)
+    except KeyboardInterrupt:
+        print("Exiting server...")
+    except Exception as e:
+        print(f"Server error: {e}")
+    finally:
+        running = False
+        server_socket.close()
+        GPIO.cleanup()
+        print("Controller server closed.")
