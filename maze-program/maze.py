@@ -6,6 +6,7 @@ import sys
 import random
 import socket
 import threading
+import time
 # import struct
 # import pickle
 
@@ -57,6 +58,10 @@ class MazeWindow(QMainWindow):
         # Initial player position
         self.player_x, self.player_y = 0, 0
         self.player_dir = Dir.UP.value
+
+        # Add a cooldown attribute
+        self.last_keypress_time = 0  # Timestamp of the last key press
+        self.keypress_cooldown = 0.3  # Cooldown period in seconds
 
         # Controller server details
         self.controller_host = '100.122.70.122'  # Maze Controller Tailscale IP
@@ -246,8 +251,9 @@ class MazeWindow(QMainWindow):
         """Send command to the Maze Navigator."""
         if self.socket_client:
             try:
-                self.socket_client.sendall(command.encode())
+                self.socket_client.sendall(f"{command}\n".encode())
                 print(f"Send command: {command}")
+                time.sleep(0.1) # Delay to prevent spamming
             except Exception as e:
                 print(f"Failed to send command: {e}")
 
@@ -301,13 +307,23 @@ class MazeWindow(QMainWindow):
 
 
     def keyPressEvent(self, event):
-        """Handles keyboard inputs"""
+        """Handles keyboard inputs with cooldown."""
+        current_time = time.time()  # Get the current timestamp
+
+        # Check if enough time has passed since the last key press
+        if current_time - self.last_keypress_time < self.keypress_cooldown:
+            return  # Ignore the key press if it's within the cooldown period
+
+        # Update the last key press time
+        self.last_keypress_time = current_time
+
+        # Handle the key press
         if event.key() == Qt.Key_W:
             self.movePlayer() # Up
         elif event.key() == Qt.Key_D:
             self.rotatePlayer(1) # Right
         elif event.key() == Qt.Key_S:
-            pass    # We are removing backwards movement
+            pass  # Backward movement disabled
         elif event.key() == Qt.Key_A:
             self.rotatePlayer(0) # Left
         elif event.key() == Qt.Key_Q: # Quit
