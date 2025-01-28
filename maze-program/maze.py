@@ -253,7 +253,7 @@ class MazeWindow(QMainWindow):
             try:
                 self.socket_client.sendall(f"{command}\n".encode())
                 print(f"Send command: {command}")
-                time.sleep(0.1) # Delay to prevent spamming
+                # time.sleep(0.1) # Delay to prevent spamming
             except Exception as e:
                 print(f"Failed to send command: {e}")
 

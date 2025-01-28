@@ -45,16 +45,17 @@ def monitor_connection(conn):
     global running
     try:
         while running:
-            # Try to receive a heartbeat or check if the connection is alive
-            conn.settimeout(2.0)  # Set a timeout for receiving data
             try:
-                data = conn.recv(1024)  # Try to receive data (heartbeat or commands)
+                # Try to receive a heartbeat or check if the connection is alive
+                conn.settimeout(2.0)  # Set a timeout for receiving data
+                data = conn.recv(1024)  # Attempt to receive data
                 if not data:
                     print("Maze.py has closed the connection.")
                     running = False  # Stop the main loop
                     break
             except socket.timeout:
-                # No data received within the timeout, assume connection is alive
+                # No data received within the timeout, assume connection is still alive
+                print("No data received, but connection is still alive.")
                 continue
             except (ConnectionResetError, BrokenPipeError):
                 print("Maze.py connection lost.")
@@ -64,6 +65,7 @@ def monitor_connection(conn):
         print(f"Error monitoring connection: {e}")
     finally:
         print("Connection monitoring stopped.")
+        running = False
 
 # Controller server setup
 print("Waiting for connection...")
