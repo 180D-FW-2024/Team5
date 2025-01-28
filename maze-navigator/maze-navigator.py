@@ -22,13 +22,13 @@ def init_GPIO():
     GPIO.setup(in3, GPIO.OUT)
     GPIO.setup(in4, GPIO.OUT)
 
-def forward():
+def backward():
     GPIO.output(in1, False)
     GPIO.output(in2, True)
     GPIO.output(in3, True)
     GPIO.output(in4, False)
 
-def backward():
+def forward():
     GPIO.output(in1, True)
     GPIO.output(in2, False)
     GPIO.output(in3, False)
@@ -147,29 +147,38 @@ try:
     imu_thread.start()
 
     # Command handling loop
-    while True:
-        data = conn.recv(1024).decode().strip()
-        if not data:
-            break
+    try:
+        while True:
+            try:
+                data = conn.recv(1024).decode().strip()
+                if not data:
+                    print("Client disconnected.")
+                    break
 
-        print(f"Received command: {data}")
+                print(f"Received command: {data}")
 
-        if data == 'forward':
-            forward()
-            time.sleep(0.55)
-            stop()
-        elif data == 'left':
-            left_turn()
-            time.sleep(0.34)
-            stop()
-        elif data == 'right':
-            right_turn()
-            time.sleep(0.34)
-            stop()
-        elif data == 'stop':
-            stop()
-        else:
-            print(f"Unknown command: {data}")
+                if data == 'forward':
+                    forward()
+                    time.sleep(0.55)
+                    stop()
+                elif data == 'left':
+                    left_turn()
+                    time.sleep(0.34)
+                    stop()
+                elif data == 'right':
+                    right_turn()
+                    time.sleep(0.34)
+                    stop()
+                elif data == 'stop':
+                    stop()
+                else:
+                    print(f"Unknown command: {data}")
+            except ConnectionResetError:
+                print("Connection reset by peer. Closing connection.")
+                break
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+
 
 finally:
     running = False  # Stop the IMU thread
