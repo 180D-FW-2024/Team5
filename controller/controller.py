@@ -40,6 +40,30 @@ def listen_for_buttons(conn):
     finally:
         print("Stopping button listener...")
 
+def monitor_connection(conn):
+    """Monitor the connection to maze.py and stop if it's lost."""
+    global running
+    try:
+        while running:
+            # Try to receive a heartbeat or check if the connection is alive
+            conn.settimeout(2.0)  # Set a timeout for receiving data
+            try:
+                data = conn.recv(1024)  # Try to receive data (heartbeat or commands)
+                if not data:
+                    print("Maze.py has closed the connection.")
+                    running = False  # Stop the main loop
+                    break
+            except socket.timeout:
+                # No data received within the timeout, assume connection is alive
+                continue
+            except (ConnectionResetError, BrokenPipeError):
+                print("Maze.py connection lost.")
+                running = False
+                break
+    except Exception as e:
+        print(f"Error monitoring connection: {e}")
+    finally:
+        print("Connection monitoring stopped.")
 
 # Controller server setup
 print("Waiting for connection...")
@@ -51,8 +75,15 @@ try:
     conn, addr = sock.accept()
     print(f"Connected by {addr}")
 
+    # Start a thread to monitor the connection
+    monitor_thread = threading.Thread(target=monitor_connection, args=(conn,), daemon=True)
+    monitor_thread.start()
+
     # Start listening for button presses
     listen_for_buttons(conn)
+
+    # Wait for the monitor thread to finish
+    monitor_thread.join()
 
 except KeyboardInterrupt:
     print("Exiting server...")
