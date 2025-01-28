@@ -7,6 +7,8 @@ import random
 import socket
 import threading
 import time
+import difflib
+import speech_recognition as sr
 # import struct
 # import pickle
 
@@ -111,6 +113,19 @@ class MazeWindow(QMainWindow):
         # Start thread for camera
         # self.camera_thread = threading.Thread(target=self.receive_camera_data, daemon=True)
         # self.camera_thread.start()
+
+        # Add voice command listener
+        self.voice_thread = threading.Thread(target=self.listen, daemon=True)
+        self.voice_thread.start()
+
+        # Voice command toggle
+        self.is_listening = False
+
+        # Add a voice toggle button
+        self.voice_toggle_button = QPushButton("Enable Voice Commands", self)
+        self.voice_toggle_button.setGeometry(300, 800, 200, 40)  # Position at bottom-center
+        self.voice_toggle_button.setCheckable(True)
+        self.voice_toggle_button.clicked.connect(self.toggle_voice_commands)
 
     def setup_controller_client(self):
         """Set up a client socket to connect to 'controller.py'."""
@@ -266,6 +281,64 @@ class MazeWindow(QMainWindow):
                 # time.sleep(0.1) # Delay to prevent spamming
             except Exception as e:
                 print(f"Failed to send command: {e}")
+
+    def listen(self):
+        r = sr.Recognizer()
+        m = sr.Microphone()
+
+        # Define allowed keywords
+        allowed_keywords = ["forward", "left", "right"]
+
+        with m as source:
+            print("Calibrating microphone for background noise...")
+            r.adjust_for_ambient_noise(source)
+            print(f"Minimum energy threshold set to: {r.energy_threshold}")
+
+            while True:
+                try:
+                    if not self.is_listening:
+                        time.sleep(0.1)
+                        continue
+
+                    print("Listening for command...")
+                    audio = r.listen(source)
+                    command = r.recognize_whisper(audio, model="tiny.en").lower().strip()
+                    print(f"Recognized voice command: {command}")
+
+                    # Split the command into words and analyze each one
+                    words = command.split()
+                    for word in words:
+                        # Match each word to allowed keywords
+                        closest_match = difflib.get_close_matches(word, allowed_keywords, n=1, cutoff=0.6)
+                        if closest_match:
+                            matched_command = closest_match[0]
+                            print(f"Matched command: {matched_command}")
+
+                            if matched_command == "forward":
+                                self.movePlayer()
+                            elif matched_command == "left":
+                                self.rotatePlayer(0)
+                            elif matched_command == "right":
+                                self.rotatePlayer(1)
+                        else:
+                            print(f"No valid command recognized")
+                except sr.UnknownValueError:
+                    print("Could not understand audio")
+                except sr.RequestError as e:
+                    print(f"Speech recognition error: {e}")
+                except Exception as e:
+                    print(f"Unexpected error in listen thread: {e}")
+
+    def toggle_voice_commands(self):
+        """Enable or disable voice commands."""
+        if self.voice_toggle_button.isChecked():
+            self.is_listening = True
+            self.voice_toggle_button.setText("Disable Voice Commands")
+            print("Voice commands enabled")
+        else:
+            self.is_listening = False
+            self.voice_toggle_button.setText("Enable Voice Commands")
+            print("Voice commands disabled")
 
     def regenerate_maze(self):
         """Regenerate the maze and refresh the display."""
