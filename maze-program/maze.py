@@ -119,7 +119,7 @@ class MazeWindow(QMainWindow):
             return None
         
     def listen_to_controller(self):
-        """Continuously listen for commands from `controller.py`."""
+        """Continuously listen for commands from 'controller.py'."""
         try:
             while True:
                 data = self.controller_client.recv(1024).decode().strip()
@@ -243,7 +243,7 @@ class MazeWindow(QMainWindow):
 #            print(f"Failed to receive camera data: {e}")
     
     def send_command_to_rpi(self, command):
-        """Send command to RPi"""
+        """Send command to the Maze Navigator."""
         if self.socket_client:
             try:
                 self.socket_client.sendall(command.encode())
