@@ -75,7 +75,7 @@ HOST = ''  # Listen on all available interfaces
 PORT = 8080  # Port for commands
 # CAMERA_PORT = 8081  # Port for camera stream
 
-running = True
+# running = True
 
 # def imu_data_sender(conn):
 #    """Send IMU data continuously to the client."""
@@ -126,7 +126,7 @@ try:
 
     # IMU Initialization
     print("Detecting IMU...")
-    IMU.detectIMU()  # Detect BerryIMU version
+    IMU.detectIMU()  # Detect BerryIMU
     IMU.initIMU()    # Initialize IMU sensors
     print("IMU Initialized.")
 
@@ -206,7 +206,7 @@ try:
 
 
 finally:
-    running = False  # Stop the IMU thread
+    # running = False  # Stop the IMU thread
     # if imu_thread.is_alive():
         # imu_thread.join()
 #     if camera_thread.is_alive():
