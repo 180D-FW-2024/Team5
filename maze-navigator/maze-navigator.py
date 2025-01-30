@@ -156,6 +156,11 @@ try:
                     break
 
                 print(f"Received command: {data}")
+                
+                # Parameters
+                time_interval = 0.005  # Time interval between readings in seconds
+                turning_radius = 400
+                current_dir = 0  # Current direction (angle)
 
                 if data == 'forward':
                     forward()
@@ -178,15 +183,15 @@ try:
                 elif data == 'right':
                     right_turn()
                     final_dir = -turning_radius
-                    
+
                     # Track the angular rotation using integration
                     while current_dir > final_dir:
                         angular_velocity = process_imu_data()["gyro"]["z"]
-                        
+
                         # Integrate angular velocity to calculate angle
                         current_dir += angular_velocity * time_interval
                         time.sleep(time_interval)  # Wait for the next reading
-                        
+
                     stop()
 
                 elif data == 'stop':
