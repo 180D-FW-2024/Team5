@@ -72,23 +72,23 @@ def process_imu_data():
 
 # Server Setup
 HOST = ''  # Listen on all available interfaces
-PORT = 8080  # Port for command/IMU data
+PORT = 8080  # Port for commands
 # CAMERA_PORT = 8081  # Port for camera stream
 
 running = True
 
-def imu_data_sender(conn):
-    """Send IMU data continuously to the client."""
-    global running
-    while running:
-        imu_data = process_imu_data()
-        imu_message = f"imu_data|acc:{imu_data['acc']}|gyro:{imu_data['gyro']}|mag:{imu_data['mag']}\n"
-        try:
-            conn.sendall(imu_message.encode())
-        except Exception as e:
-            print(f"Error sending IMU data: {e}")
-            break
-        time.sleep(0.1)  # Send data every 100ms
+# def imu_data_sender(conn):
+#    """Send IMU data continuously to the client."""
+#    global running
+#    while running:
+#        imu_data = process_imu_data()
+#        imu_message = f"imu_data|acc:{imu_data['acc']}|gyro:{imu_data['gyro']}|mag:{imu_data['mag']}\n"
+#        try:
+#            conn.sendall(imu_message.encode())
+#        except Exception as e:
+#            print(f"Error sending IMU data: {e}")
+#            break
+#        time.sleep(0.1)  # Send data every 100ms
 
 # def start_camera_stream():
 #    """Stream camera frames to the client."""
@@ -143,8 +143,8 @@ try:
     print(f"Connected by {addr}")
 
     # Start IMU data thread
-    imu_thread = threading.Thread(target=imu_data_sender, args=(conn,), daemon=True)
-    imu_thread.start()
+    # imu_thread = threading.Thread(target=imu_data_sender, args=(conn,), daemon=True)
+    # imu_thread.start()
 
     # Command handling loop
     try:
@@ -207,8 +207,8 @@ try:
 
 finally:
     running = False  # Stop the IMU thread
-    if imu_thread.is_alive():
-        imu_thread.join()
+    # if imu_thread.is_alive():
+        # imu_thread.join()
 #     if camera_thread.is_alive():
 #        camera_thread.join()
     stop()

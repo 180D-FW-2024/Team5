@@ -87,10 +87,10 @@ class MazeWindow(QMainWindow):
         self.regenerate_button.clicked.connect(self.regenerate_maze)
 
         # Add IMU Data Label
-        self.imu_label = QLabel("IMU Data: N/A", self)
-        self.imu_label.setGeometry(775, 650, 640, 200)  # Centered below the camera feed
-        self.imu_label.setAlignment(Qt.AlignCenter)
-        self.imu_label.setStyleSheet("font-size: 14px; font-weight: bold;")
+        # self.imu_label = QLabel("IMU Data: N/A", self)
+        # self.imu_label.setGeometry(775, 650, 640, 200)  # Centered below the camera feed
+        # self.imu_label.setAlignment(Qt.AlignCenter)
+        # self.imu_label.setStyleSheet("font-size: 14px; font-weight: bold;")
 
         # Add Camera Feed Label
         # self.camera_feed_label = QLabel("Camera Feed", self)
@@ -107,8 +107,8 @@ class MazeWindow(QMainWindow):
         self.setup_dpad()
 
         # Start a background thread to listen for IMU data
-        self.imu_data_thread = threading.Thread(target=self.receive_imu_data, daemon=True)
-        self.imu_data_thread.start()
+        # self.imu_data_thread = threading.Thread(target=self.receive_imu_data, daemon=True)
+        # self.imu_data_thread.start()
 
         # Start thread for camera
         # self.camera_thread = threading.Thread(target=self.receive_camera_data, daemon=True)
@@ -206,37 +206,37 @@ class MazeWindow(QMainWindow):
         self.down_button.setGeometry(dpad_center_x - int(0.5 * dpad_button_width), dpad_center_y + int(0.5 * dpad_button_height + dpad_button_margin), dpad_button_width, dpad_button_height)
         self.down_button.clicked.connect(lambda: self.movePlayer(2))"""
 
-    def receive_imu_data(self):
-        """Continuously receive IMU data from the RPi"""
-        if self.socket_client:
-            buffer = ""
-            while True:
-                try:
-                    # Read data from the socket
-                    data = self.socket_client.recv(2048).decode()
-                    if not data:
-                        break  # Connection closed
+    # def receive_imu_data(self):
+    #     """Continuously receive IMU data from the RPi"""
+    #    if self.socket_client:
+    #        buffer = ""
+    #        while True:
+    #            try:
+    #                # Read data from the socket
+    #                data = self.socket_client.recv(2048).decode()
+    #                if not data:
+    #                    break  # Connection closed
 
                     # Add data to buffer and process complete messages
-                    buffer += data
-                    while "\n" in buffer:
-                        message, buffer = buffer.split("\n", 1)  # Split at the first newline
-                        self.process_imu_message(message.strip())
-                except Exception as e:
-                    print(f"Failed to receive data: {e}")
-                    break
+    #                buffer += data
+    #                while "\n" in buffer:
+    #                    message, buffer = buffer.split("\n", 1)  # Split at the first newline
+    #                    self.process_imu_message(message.strip())
+    #            except Exception as e:
+    #                print(f"Failed to receive data: {e}")
+    #                break
 
-    def process_imu_message(self, message):
-        """Process a single IMU message."""
-        if message.startswith("imu_data"):
-            try:
-                _, acc_data, gyro_data, mag_data = message.split("|")
-                acc_values = acc_data.replace("acc:", "")
-                gyro_values = gyro_data.replace("gyro:", "")
-                mag_values = mag_data.replace("mag:", "")
-                self.imu_label.setText(f"IMU Data\nAcc: {acc_values}\nGyro: {gyro_values}\nMag: {mag_values}")
-            except ValueError:
-                print("Malformed IMU data received:", message)
+    # def process_imu_message(self, message):
+    #     """Process a single IMU message."""
+    #    if message.startswith("imu_data"):
+    #        try:
+    #            _, acc_data, gyro_data, mag_data = message.split("|")
+    #            acc_values = acc_data.replace("acc:", "")
+    #            gyro_values = gyro_data.replace("gyro:", "")
+    #            mag_values = mag_data.replace("mag:", "")
+    #            self.imu_label.setText(f"IMU Data\nAcc: {acc_values}\nGyro: {gyro_values}\nMag: {mag_values}")
+    #        except ValueError:
+    #            print("Malformed IMU data received:", message)
 
 
 #    def receive_camera_data(self):
@@ -278,7 +278,6 @@ class MazeWindow(QMainWindow):
             try:
                 self.socket_client.sendall(f"{command}\n".encode())
                 print(f"Send command: {command}")
-                # time.sleep(0.1) # Delay to prevent spamming
             except Exception as e:
                 print(f"Failed to send command: {e}")
 
