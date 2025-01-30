@@ -163,12 +163,32 @@ try:
                     stop()
                 elif data == 'left':
                     left_turn()
-                    time.sleep(0.34)
+                    final_dir = turning_radius
+
+                    # Track the angular rotation using integration & stop when you finished your turn
+                    while current_dir < final_dir:
+                        angular_velocity = process_imu_data()["gyro"]["z"]
+
+                        # Integrate angular velocity to calculate angle
+                        current_dir += angular_velocity * time_interval
+                        time.sleep(time_interval)  # Wait for the next reading
+
                     stop()
+
                 elif data == 'right':
                     right_turn()
-                    time.sleep(0.34)
+                    final_dir = -turning_radius
+                    
+                    # Track the angular rotation using integration
+                    while current_dir > final_dir:
+                        angular_velocity = process_imu_data()["gyro"]["z"]
+                        
+                        # Integrate angular velocity to calculate angle
+                        current_dir += angular_velocity * time_interval
+                        time.sleep(time_interval)  # Wait for the next reading
+                        
                     stop()
+
                 elif data == 'stop':
                     stop()
                 else:
