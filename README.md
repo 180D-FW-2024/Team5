@@ -1,4 +1,14 @@
 # Team5
+## Download Maze Game
+[Download the latest release](https://github.com/180D-FW-2024/Team5/releases/download/v1.0.0-beta/maze)
+
+### Mac/Linux
+After downloading, navigate to executable 'maze' and run: chmod +x ./maze && ./maze
+
+### Windows:
+run the downloaded executable 'maze.exe'
+
+## Program Info
 Main program is contained in maze-program. Needs to run on the user's laptop.
 
 Maze Navigator code runs on the RC car that goes through the maze.
