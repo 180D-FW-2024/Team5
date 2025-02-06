@@ -1,12 +1,15 @@
 # Team5
 ## Download Maze Game
+### Mac/Linux (M1/ARM):
 [Download the latest release](https://github.com/180D-FW-2024/Team5/releases/download/v1.0.0-beta/maze)
 
-### Mac/Linux
 After downloading, navigate to folder containing downloaded file 'maze' and run: chmod +x ./maze && ./maze
 
-### Windows:
-run the downloaded executable 'maze.exe'
+### Windows (x86):
+
+### Mac (Intel):
+
+
 
 ## Program Info
 Main program is contained in maze-program. Needs to run on the user's laptop.
