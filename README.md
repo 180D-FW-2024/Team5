@@ -1,5 +1,6 @@
 # Team5
 # For detailed download and program instructions, refer to the user manual found [here](https://github.com/180D-FW-2024/Team5/blob/main/ECE_180_User_Manual.pdf).
+Note: you must download the PDF to click on any of the links such as for the Tailscale invites.
 
 
 ## Download Maze Game
