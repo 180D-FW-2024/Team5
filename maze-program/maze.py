@@ -460,7 +460,7 @@ if __name__ == "__main__":
     multiprocessing.freeze_support()  # Fix for PyInstaller multi-threading issue
 
     app = QApplication(sys.argv)
-    n, m = 7, 7  # Dimensions of the maze (N x M)
+    n, m = 3, 3  # Dimensions of the maze (N x M)
     window = MazeWindow(n, m)
     window.show()
     sys.exit(app.exec_())
