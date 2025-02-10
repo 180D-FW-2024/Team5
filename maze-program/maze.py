@@ -9,6 +9,7 @@ import threading
 import time
 import difflib
 import speech_recognition as sr
+import multiprocessing
 # import struct
 # import pickle
 
@@ -456,8 +457,10 @@ class MazeWindow(QMainWindow):
 
 # Running the application
 if __name__ == "__main__":
+    multiprocessing.freeze_support()  # Fix for PyInstaller multi-threading issue
+
     app = QApplication(sys.argv)
-    n, m = 7, 7  # Dimensions of the maze (N x M)
+    n, m = 3, 3  # Dimensions of the maze (N x M)
     window = MazeWindow(n, m)
     window.show()
     sys.exit(app.exec_())

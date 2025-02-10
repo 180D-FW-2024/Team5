@@ -65,7 +65,7 @@ def process_imu_data():
 
     imu_data = {
         "acc": {"x": acc_x, "y": acc_y, "z": acc_z},
-        "gyro": {"x": gyr_x, "y": gyr_y, "z": acc_z},
+        "gyro": {"x": gyr_x, "y": gyr_y, "z": gyr_z},
         "mag": {"x": mag_x, "y": mag_y, "z": mag_z}
     }
     return imu_data
