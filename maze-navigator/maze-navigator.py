@@ -11,16 +11,30 @@ import cv2
 # Motor pins
 in1 = 17
 in2 = 22
+enA = 27
+
 in3 = 23
 in4 = 24
+enB = 25
 
 # GPIO Setup
 def init_GPIO():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(in1, GPIO.OUT)
     GPIO.setup(in2, GPIO.OUT)
+    GPIO.setup(enA, GPIO.OUT)
     GPIO.setup(in3, GPIO.OUT)
     GPIO.setup(in4, GPIO.OUT)
+    GPIO.setup(enB, GPIO.OUT)
+    
+    # Create PWM objects for both motors
+    global pwm_a, pwm_b
+    pwm_a = GPIO.PWM(enA, 1000)  # 1000 Hz frequency
+    pwm_b = GPIO.PWM(enB, 1000)
+    
+    # Start PWM with 50% duty cycle
+    pwm_a.start(75)
+    pwm_b.start(75)
 
 def backward():
     GPIO.output(in1, False)
@@ -29,18 +43,21 @@ def backward():
     GPIO.output(in4, False)
 
 def forward():
+    set_speed(75)
     GPIO.output(in1, True)
     GPIO.output(in2, False)
     GPIO.output(in3, False)
     GPIO.output(in4, True)
 
 def left_turn():
+    set_speed(75)
     GPIO.output(in1, True)
     GPIO.output(in2, False)
     GPIO.output(in3, True)
     GPIO.output(in4, False)
 
 def right_turn():
+    set_speed(75)
     GPIO.output(in1, False)
     GPIO.output(in2, True)
     GPIO.output(in3, False)
@@ -69,6 +86,14 @@ def process_imu_data():
         "mag": {"x": mag_x, "y": mag_y, "z": mag_z}
     }
     return imu_data
+
+def set_speed(speed):
+    """
+    Set speed for both motors
+    speed: 0-100 (percent of max speed)
+    """
+    pwm_a.ChangeDutyCycle(speed)
+    pwm_b.ChangeDutyCycle(speed)
 
 # Server Setup
 HOST = ''  # Listen on all available interfaces
@@ -164,7 +189,7 @@ try:
 
                 if data == 'forward':
                     forward()
-                    time.sleep(0.55)
+                    time.sleep(1)
                     stop()
                 elif data == 'left':
                     left_turn()
@@ -212,6 +237,8 @@ finally:
 #     if camera_thread.is_alive():
 #        camera_thread.join()
     stop()
+    pwm_a.stop()
+    pwm_b.stop()
     GPIO.cleanup()
     sock.close()
     print("Server closed.")
