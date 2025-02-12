@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel
 from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap
 from PyQt5.QtCore import Qt, QPoint, QTimer
 from enum import Enum
+from linedetect import detectLines
 import sys
 import random
 import socket
@@ -113,9 +114,13 @@ class MazeWindow(QMainWindow):
         self.imu_data_thread.start()
 
         # Start thread for camera
+        self.latest_frame = None
+        self.latest_frame_lock = threading.Lock()
         self.camera_thread = threading.Thread(target=self.receive_camera_data, daemon=True)
+        self.camera_processing_thread = threading.Thread(target=self.process_camera_data, daemon=True)
         self.camera_thread.start()
-
+        self.camera_processing_thread.start()
+        
         # Add voice command listener
         self.voice_thread = threading.Thread(target=self.listen, daemon=True)
         self.voice_thread.start()
@@ -263,42 +268,6 @@ class MazeWindow(QMainWindow):
     def receive_camera_data(self):
         self.socket_camera = self.setup_socket_camera()
         
-        '''
-        try:
-            camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            camera_socket.connect((self.server_host, self.camera_port))
-            print("Connected to camera stream.")
-            data = b""
-
-            while True:
-                print(f"Received {len(data)} bytes of camera data")
-                print(f"Frame shape: {frame.shape}")
-                
-                # Receive frame length
-                while len(data) < struct.calcsize("L"):
-                    data += camera_socket.recv(4096)
-                packed_len = data[:struct.calcsize("L")]
-                data = data[struct.calcsize("L"):]
-                frame_len = struct.unpack("L", packed_len)[0]
-
-                # Receive frame data
-                while len(data) < frame_len:
-                    data += camera_socket.recv(4096)
-                frame_data = data[:frame_len]
-                data = data[frame_len:]
-
-                # Deserialize frame
-                frame = pickle.loads(frame_data)
-
-                # Convert to QImage and display
-                height, width, channel = frame.shape
-                bytes_per_line = channel * width
-                qimg = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
-                pixmap = QPixmap.fromImage(qimg)
-
-                self.camera_label.setPixmap(pixmap)
-        '''
-
         try:
             while True: 
                 # Receive the size of the incoming frame
@@ -317,19 +286,55 @@ class MazeWindow(QMainWindow):
                 frame = np.frombuffer(frame_data, dtype=np.uint8)
                 frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
 
-                # Convert frame to QImage for PyQt
-                height, width, channels = frame.shape
-                bytes_per_line = channels * width
-                qimage = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
-                pixmap = QPixmap.fromImage(qimage)
-
-                # Set the QPixmap on the label to display the image
-                self.camera_label.setPixmap(pixmap)
-
-                # For camera feed framerate (delay in sec)
-                time.sleep(0.25)
+                # Store latest frame into shared variable
+                with self.latest_frame_lock:
+                    self.latest_frame = frame
+                
         except Exception as e:
             print(f"Failed to receive camera data: {e}")
+
+    def process_camera_data(self):
+        while True: 
+            with self.latest_frame_lock:
+                if self.latest_frame is None:
+                    continue
+                frame = self.latest_frame.copy()
+
+            # Get probabilistic Hough lines from image
+            lines = detectLines(frame)
+
+            # Draw detected line segments onto image
+            if lines is not None and lines.any():
+                for line in lines:
+                    x1, y1, x2, y2 = line[0]
+                    cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+            #frame = checkImage
+
+            # Debug section to find pixel coordinates
+            bound_centerX = 160     # distance from center in both dirs at x = 320, max 320
+            bound_upperY = 240      # top = 0, bottom = 480
+            cv2.line(frame, (320 - bound_centerX, bound_upperY), (320 - bound_centerX, 480), (255, 0, 0), 2)
+            cv2.line(frame, (320 + bound_centerX, bound_upperY), (320 + bound_centerX, 480), (255, 0, 0), 2)
+            cv2.line(frame, (320 - bound_centerX, bound_upperY), (320 + bound_centerX, bound_upperY), (255, 0, 0), 2)
+
+            # Convert frame to QImage for PyQt for color
+            height, width, channels = frame.shape
+            bytes_per_line = channels * width
+            qimage = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
+            
+            # Convert frame to QImage for PyQt for grayscale (when debugging)
+            # height, width = frame.shape
+            # bytes_per_line = width
+            # qimage = QImage(frame.data, width, height, bytes_per_line, QImage.Format_Grayscale8)
+            
+            pixmap = QPixmap.fromImage(qimage)
+
+            # Set the QPixmap on the label to display the image
+            self.camera_label.setPixmap(pixmap)
+
+            # For camera feed framerate (delay in sec)
+            time.sleep(0.25)
 
     def send_command_to_rpi(self, command):
         """Send command to the Maze Navigator."""
