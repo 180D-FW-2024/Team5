@@ -37,17 +37,17 @@ def init_GPIO():
     pwm_b.start(75)
 
 def backward():
-    GPIO.output(in1, False)
-    GPIO.output(in2, True)
-    GPIO.output(in3, True)
-    GPIO.output(in4, False)
-
-def forward():
-    set_speed(75)
     GPIO.output(in1, True)
     GPIO.output(in2, False)
     GPIO.output(in3, False)
     GPIO.output(in4, True)
+
+def forward():
+    set_speed(75)
+    GPIO.output(in1, False)
+    GPIO.output(in2, True)
+    GPIO.output(in3, True)
+    GPIO.output(in4, False)
 
 def left_turn():
     set_speed(75)
