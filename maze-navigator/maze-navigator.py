@@ -6,7 +6,8 @@ import IMU
 import cv2
 #import struct
 #import pickle
-#from picamera2 import Picamera2
+from picamera2 import Picamera2
+import numpy as np
 
 # Motor pins
 in1 = 17
@@ -43,11 +44,26 @@ def backward():
     GPIO.output(in4, True)
 
 def forward():
+    """Move forward while checking for line"""
     set_speed(75)
     GPIO.output(in1, False)
     GPIO.output(in2, True)
     GPIO.output(in3, True)
     GPIO.output(in4, False)
+    
+    try:
+        # Capture frame
+        frame = picam2.capture_array()
+        
+        # Check for line
+        if detect_line(frame):
+            print("Line detected - stopping")
+            stop()
+            return True
+    except Exception as e:
+        print(f"Error in line detection: {e}")
+    
+    return False
 
 def left_turn():
     set_speed(75)
@@ -94,6 +110,38 @@ def set_speed(speed):
     """
     pwm_a.ChangeDutyCycle(speed)
     pwm_b.ChangeDutyCycle(speed)
+
+def setup_camera():
+    """Initialize and configure the PiCamera"""
+    picam2 = Picamera2()
+    preview_config = picam2.create_preview_configuration(
+        main={"format": 'RGB888',
+              "size": (640, 480)}
+    )
+    picam2.configure(preview_config)
+    picam2.start()
+    return picam2
+
+def detect_line(frame):
+    """
+    Detect black line in the frame
+    Returns True if a black line is detected
+    """
+    # Convert to grayscale
+    gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    
+    # Define region of interest (bottom third of the frame)
+    height = gray.shape[0]
+    roi = gray[int(2*height/3):height, :]
+    
+    # Apply threshold to detect black line
+    _, thresh = cv2.threshold(roi, 50, 255, cv2.THRESH_BINARY_INV)
+    
+    # Calculate percentage of black pixels in ROI
+    black_pixel_percentage = np.sum(thresh == 255) / thresh.size
+    
+    # Return True if black pixels exceed threshold (adjust as needed)
+    return black_pixel_percentage > 0.1
 
 # Server Setup
 HOST = ''  # Listen on all available interfaces
@@ -149,10 +197,15 @@ try:
     # GPIO Initialization
     init_GPIO()
 
+    # Camera Initialization
+    print("Setting up camera...")
+    picam2 = setup_camera()
+    print("Camera initialized.")
+
     # IMU Initialization
     print("Detecting IMU...")
-    IMU.detectIMU()  # Detect BerryIMU
-    IMU.initIMU()    # Initialize IMU sensors
+    IMU.detectIMU()
+    IMU.initIMU()
     print("IMU Initialized.")
 
     # Start camera stream thread
