@@ -18,9 +18,9 @@ in4 = 24
 enB = 25
 
 # ROI constants, the top of the frame is 0 and the bottom is 1
-roi_start = 0
-roi_end = 1/3
-threshold = 0.3 # Threshold for black line detection
+roi_start = 2/3
+roi_end = 7/8
+threshold = 0.4 # Threshold for black line detection
 
 # GPIO Setup
 def init_GPIO():
@@ -38,8 +38,8 @@ def init_GPIO():
     pwm_b = GPIO.PWM(enB, 1000)
     
     # Start PWM duty cycle
-    pwm_a.start(75)
-    pwm_b.start(75)
+    pwm_a.start(80)
+    pwm_b.start(80)
 
 def backward():
     GPIO.output(in1, True)
@@ -55,7 +55,6 @@ def forward():
     GPIO.output(in4, False)
     
     check_interval = 0.011  # ~90 Hz checking rate
-    time.sleep(0.5)  # Wait before capturing the first frame
     
     try:
         while True:
@@ -195,7 +194,7 @@ def start_camera_stream():
             except ConnectionError:
                 break
             
-            time.sleep(0.02)  # 50 fps
+            time.sleep(0.011)  # ~90 fps
             
     except Exception as e:
         print(f"Camera stream error: {e}")
