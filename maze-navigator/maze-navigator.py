@@ -18,9 +18,9 @@ in4 = 24
 enB = 25
 
 # ROI constants, the top of the frame is 0 and the bottom is 1
-roi_start = 0 
-roi_end = 1/3
-threshold = 0.3 # Threshold for black line detection
+roi_start = 2/3
+roi_end = 7/8
+threshold = 0.4 # Threshold for black line detection
 
 # GPIO Setup
 def init_GPIO():
@@ -37,9 +37,9 @@ def init_GPIO():
     pwm_a = GPIO.PWM(enA, 1000)  # 1000 Hz frequency
     pwm_b = GPIO.PWM(enB, 1000)
     
-    # Start PWM with 50% duty cycle
-    pwm_a.start(75)
-    pwm_b.start(75)
+    # Start PWM duty cycle
+    pwm_a.start(80)
+    pwm_b.start(80)
 
 def backward():
     GPIO.output(in1, True)
@@ -49,35 +49,39 @@ def backward():
 
 def forward():
     """Move forward while checking for line"""
-    set_speed(75)
     GPIO.output(in1, False)
     GPIO.output(in2, True)
     GPIO.output(in3, True)
     GPIO.output(in4, False)
     
+    check_interval = 0.011  # ~90 Hz checking rate
+    
     try:
-        # Capture frame
-        frame = picam2.capture_array()
-        
-        # Check for line
-        if detect_line(frame):
-            print("Line detected - stopping")
-            stop()
-            return True
+        while True:
+            # Capture frame
+            frame = picam2.capture_array()
+            
+            # Check for line
+            if detect_line(frame):
+                print("Line detected - stopping")
+                stop()
+                return True
+                
+            time.sleep(check_interval)
+            
     except Exception as e:
         print(f"Error in line detection: {e}")
     
+    stop()
     return False
 
 def left_turn():
-    set_speed(75)
     GPIO.output(in1, True)
     GPIO.output(in2, False)
     GPIO.output(in3, True)
     GPIO.output(in4, False)
 
 def right_turn():
-    set_speed(75)
     GPIO.output(in1, False)
     GPIO.output(in2, True)
     GPIO.output(in3, False)
@@ -190,7 +194,7 @@ def start_camera_stream():
             except ConnectionError:
                 break
             
-            time.sleep(0.03)  # ~30 fps
+            time.sleep(0.011)  # ~90 fps
             
     except Exception as e:
         print(f"Camera stream error: {e}")
@@ -238,13 +242,11 @@ try:
                 
                 # Parameters
                 time_interval = 0.005  # Time interval between readings in seconds
-                turning_radius = 400
+                turning_radius = 450
                 current_dir = 0  # Current direction (angle)
 
                 if data == 'forward':
                     forward()
-                    time.sleep(1)
-                    stop()
                 elif data == 'left':
                     left_turn()
                     final_dir = turning_radius
