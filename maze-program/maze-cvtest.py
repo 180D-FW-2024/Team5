@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel
 from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap
 from PyQt5.QtCore import Qt, QPoint, QTimer
 from enum import Enum
-from linedetect import detectLines
+from linedetect import detectLines, line_intersects_square
 import sys
 import random
 import socket
@@ -82,6 +82,7 @@ class MazeWindow(QMainWindow):
         self.server_host = '100.94.211.35' # Maze Navigator Tailscale IP
         self.server_port = 8080
         self.camera_port = 8081
+        self.line_visible_port = 8082
         self.socket_client = self.setup_socket_client()
 
         # Add the regenerate button
@@ -114,12 +115,19 @@ class MazeWindow(QMainWindow):
         self.imu_data_thread.start()
 
         # Start thread for camera
+        self.first_frame_received = False
         self.latest_frame = None
         self.latest_frame_lock = threading.Lock()
         self.camera_thread = threading.Thread(target=self.receive_camera_data, daemon=True)
         self.camera_processing_thread = threading.Thread(target=self.process_camera_data, daemon=True)
         self.camera_thread.start()
         self.camera_processing_thread.start()
+
+        # Start thread for line visibility signal
+        self.line_visible = True
+        self.line_visible_lock = threading.Lock()
+        self.line_visible_thread = threading.Thread(target=self.send_line_visible_signal, daemon=True)
+        self.line_visible_thread.start()
         
         # Add voice command listener
         self.voice_thread = threading.Thread(target=self.listen, daemon=True)
@@ -208,6 +216,22 @@ class MazeWindow(QMainWindow):
         except Exception as e:
             print(f"Failed to connect to camera: {e}")
             return None
+        
+    def setup_socket_line_visible(self):
+        """Set up the socket for line visibility signal stream"""
+        print(f"Started LV signal connection setup")
+        try:
+            line_visible_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # camera_socket.settimeout(5.0)  # Timeout after 5 seconds
+            line_visible_socket.connect((self.server_host, self.line_visible_port))
+            print(f"Connected to LV signal at {self.server_host}:{self.line_visible_port}")
+            return line_visible_socket
+        except socket.timeout:
+            print("Line visibility signal connection timed out.")
+            return None
+        except Exception as e:
+            print(f"Failed to connect to navigator for line visibility signal: {e}")
+            return None
 
     def setup_dpad(self):
         """Set up D-Pad buttons for on-screen control"""
@@ -265,6 +289,29 @@ class MazeWindow(QMainWindow):
             except ValueError:
                 print("Malformed IMU data received:", message)
 
+    def send_line_visible_signal(self):
+        self.socket_line_visible = self.setup_socket_line_visible()
+        
+        while True:
+            boolToSend = False;
+            with self.line_visible_lock:
+                boolToSend = self.line_visible
+            try:
+                byte_value = b'\x01' if boolToSend else b'\x00'
+                self.socket_line_visible.sendall(byte_value)
+            except Exception as e:
+                print(f"Failed to send command: {e}")
+            time.sleep(0.25)
+
+    '''
+    if self.socket_client:
+            try:
+                self.socket_client.sendall(f"{command}\n".encode())
+                print(f"Send command: {command}")
+            except Exception as e:
+                print(f"Failed to send command: {e}")
+    '''
+
     def receive_camera_data(self):
         self.socket_camera = self.setup_socket_camera()
         
@@ -289,11 +336,16 @@ class MazeWindow(QMainWindow):
                 # Store latest frame into shared variable
                 with self.latest_frame_lock:
                     self.latest_frame = frame
+
+                self.first_frame_received = True
                 
         except Exception as e:
             print(f"Failed to receive camera data: {e}")
 
     def process_camera_data(self):
+        while self.first_frame_received is False:
+            pass
+
         while True: 
             with self.latest_frame_lock:
                 if self.latest_frame is None:
@@ -304,16 +356,30 @@ class MazeWindow(QMainWindow):
             lines = detectLines(frame)
 
             # Draw detected line segments onto image
+            bound_centerX = 160     # distance from center in both dirs at x = 320, max 320
+            bound_upperY = 240      # top = 0, bottom = 480
+
+            boundingBox = [(320 - bound_centerX, bound_upperY), (320 + bound_centerX, bound_upperY), (320 + bound_centerX, 480), (320 - bound_centerX, 480)]
+
+            lineIsVisible = False
             if lines is not None and lines.any():
                 for line in lines:
                     x1, y1, x2, y2 = line[0]
                     cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    '''
+                    if (320 - bound_centerX) < x1 < (320 + bound_centerX) and bound_upperY < y1 < 480:
+                        lineIsVisible = True
+                    elif (320 - bound_centerX) < x2 < (320 + bound_centerX) and bound_upperY < y2 < 480:
+                        lineIsVisible = True
+                    '''
+                    if line_intersects_square(x1, y1, x2, y2, boundingBox):
+                        lineIsVisible = True
+            with self.line_visible_lock:
+                self.line_visible = lineIsVisible
 
             #frame = checkImage
 
             # Debug section to find pixel coordinates
-            bound_centerX = 160     # distance from center in both dirs at x = 320, max 320
-            bound_upperY = 240      # top = 0, bottom = 480
             cv2.line(frame, (320 - bound_centerX, bound_upperY), (320 - bound_centerX, 480), (255, 0, 0), 2)
             cv2.line(frame, (320 + bound_centerX, bound_upperY), (320 + bound_centerX, 480), (255, 0, 0), 2)
             cv2.line(frame, (320 - bound_centerX, bound_upperY), (320 + bound_centerX, bound_upperY), (255, 0, 0), 2)

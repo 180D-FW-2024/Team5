@@ -6,7 +6,7 @@ import IMU
 import cv2
 import struct
 import pickle
-from picamera2 import Picamera2
+#from picamera2 import Picamera2
 
 # Motor pins
 in1 = 17
@@ -65,7 +65,7 @@ def process_imu_data():
 
     imu_data = {
         "acc": {"x": acc_x, "y": acc_y, "z": acc_z},
-        "gyro": {"x": gyr_x, "y": gyr_y, "z": gyr_z},
+        "gyro": {"x": gyr_x, "y": gyr_y, "z": acc_z},
         "mag": {"x": mag_x, "y": mag_y, "z": mag_z}
     }
     return imu_data
@@ -74,7 +74,6 @@ def process_imu_data():
 HOST = ''  # Listen on all available interfaces
 PORT = 8080  # Port for commands
 CAMERA_PORT = 8081  # Port for camera stream
-LINE_VISIBLE_PORT = 8082    # Port for line visibility signal
 
 running = True
 
@@ -91,33 +90,9 @@ def imu_data_sender(conn):
             break
         time.sleep(0.1)  # Send data every 100ms
 
-def start_line_visible_stream():
-    """Accept line visibility signal continuously from client"""
-    global running
-
-    line_visible_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    line_visible_sock.bind((HOST, LINE_VISIBLE_PORT))
-    line_visible_sock.listen(1)
-    conn, addr = line_visible_sock.accept()
-    print(f"LV signal connected by {addr}")
-
-    try:
-        while running:
-            data = conn.recv(1)
-            if data == b'\x01':
-                print(f"Line visible, cannot move forward")
-            elif data == b'\x00':
-                print(f"Line not visible, can move forward")
-            else:
-                print(f"Unknown value")
-    except Exception as e:
-        print(f"Line visibility stream error: {e}")
-    finally:
-        conn.close()
-        line_visible_sock.close()
-
+"""
 def start_camera_stream():
-    """Stream camera frames to the client."""
+    # Stream camera frames to the client.
     global running
     picam2 = Picamera2()
     picam2.configure(picam2.create_preview_configuration(main={"size": (640, 480)}))
@@ -133,31 +108,58 @@ def start_camera_stream():
     try:
         while running:
             frame = picam2.capture_array()
-
             # Convert frame to RGB
-            # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
             # Serialize and send the frame
-            # data = pickle.dumps(frame)
-            # conn.sendall(struct.pack("L", len(data)) + data)
-
-            # Convert to JPEG
-            _, jpeg = cv2.imencode('.jpg', frame)
-            frame_bytes = jpeg.tobytes()
-            
-            # Send the size of the frame first
-            frame_size = len(frame_bytes)
-            conn.sendall(struct.pack("!I", frame_size))  # Send the size of the image
-            
-            # Send the actual image data
-            conn.sendall(frame_bytes)
-
-            # Wait a little (in sec) before sending the next frame
-            time.sleep(0.25)
+            data = pickle.dumps(frame)
+            conn.sendall(struct.pack("L", len(data)) + data)
     except Exception as e:
         print(f"Camera stream error: {e}")
     finally:
         picam2.stop()
+        conn.close()
+        camera_socket.close()
+"""
+
+def start_camera_stream():
+    """Stream camera frames to the client."""
+    global running
+    
+    # cap = cv2.VideoCapture("/dev/video0")
+    cap = cv2.VideoCapture(0)
+
+    if not cap.isOpened():
+        print("Error: Could not open camera.")
+        return
+    else:
+        print("Camera opened successfully.")
+
+    # Set camera resolution (optional)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+    camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    camera_socket.bind((HOST, CAMERA_PORT))
+    camera_socket.listen(1)
+    print("Waiting for camera connection...")
+    conn, addr = camera_socket.accept()
+    print(f"Camera connected by {addr}")
+
+    try:
+        while running:
+            ret, frame = cap.read()
+            if not ret:
+                print("Error: Failed to grab frame.")
+                break
+
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            data = pickle.dumps(frame)
+            conn.sendall(struct.pack("L", len(data)) + data)
+    except Exception as e:
+        print(f"Camera stream error: {e}")
+    finally:
+        cap.release()
         conn.close()
         camera_socket.close()
 
@@ -171,14 +173,6 @@ try:
     IMU.initIMU()    # Initialize IMU sensors
     print("IMU Initialized.")
 
-    # Start camera stream thread
-    camera_thread = threading.Thread(target=start_camera_stream, daemon=True)
-    camera_thread.start()
-
-    # Start line visibility signal thread
-    lv_thread = threading.Thread(target=start_line_visible_stream, daemon=True)
-    lv_thread.start()
-
     # Command server setup
     print("Waiting for connection...")
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -191,6 +185,10 @@ try:
     imu_thread = threading.Thread(target=imu_data_sender, args=(conn,), daemon=True)
     imu_thread.start()
 
+    # Start camera stream thread
+    camera_thread = threading.Thread(target=start_camera_stream, daemon=True)
+    camera_thread.start()
+
     # Command handling loop
     try:
         while True:
@@ -200,7 +198,7 @@ try:
                     print("Client disconnected.")
                     break
 
-                #print(f"Received command: {data}")
+                print(f"Received command: {data}")
                 
                 # Parameters
                 time_interval = 0.005  # Time interval between readings in seconds
@@ -213,37 +211,16 @@ try:
                     stop()
                 elif data == 'left':
                     left_turn()
-                    final_dir = turning_radius
-
-                    # Track the angular rotation using integration & stop when you finished your turn
-                    while current_dir < final_dir:
-                        angular_velocity = process_imu_data()["gyro"]["z"]
-
-                        # Integrate angular velocity to calculate angle
-                        current_dir += angular_velocity * time_interval
-                        time.sleep(time_interval)  # Wait for the next reading
-
+                    time.sleep(0.34)
                     stop()
-
                 elif data == 'right':
                     right_turn()
-                    final_dir = -turning_radius
-
-                    # Track the angular rotation using integration
-                    while current_dir > final_dir:
-                        angular_velocity = process_imu_data()["gyro"]["z"]
-
-                        # Integrate angular velocity to calculate angle
-                        current_dir += angular_velocity * time_interval
-                        time.sleep(time_interval)  # Wait for the next reading
-
+                    time.sleep(0.34)
                     stop()
-
                 elif data == 'stop':
                     stop()
                 else:
-                    #print(f"Unknown command: {data}")
-                    pass
+                    print(f"Unknown command: {data}")
             except ConnectionResetError:
                 print("Connection reset by peer. Closing connection.")
                 break
@@ -256,7 +233,7 @@ finally:
     if imu_thread.is_alive():
         imu_thread.join()
     if camera_thread.is_alive():
-       camera_thread.join()
+        camera_thread.join()
     stop()
     GPIO.cleanup()
     sock.close()

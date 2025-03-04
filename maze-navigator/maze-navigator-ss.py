@@ -65,7 +65,7 @@ def process_imu_data():
 
     imu_data = {
         "acc": {"x": acc_x, "y": acc_y, "z": acc_z},
-        "gyro": {"x": gyr_x, "y": gyr_y, "z": gyr_z},
+        "gyro": {"x": gyr_x, "y": gyr_y, "z": acc_z},
         "mag": {"x": mag_x, "y": mag_y, "z": mag_z}
     }
     return imu_data
@@ -74,7 +74,6 @@ def process_imu_data():
 HOST = ''  # Listen on all available interfaces
 PORT = 8080  # Port for commands
 CAMERA_PORT = 8081  # Port for camera stream
-LINE_VISIBLE_PORT = 8082    # Port for line visibility signal
 
 running = True
 
@@ -90,31 +89,6 @@ def imu_data_sender(conn):
             print(f"Error sending IMU data: {e}")
             break
         time.sleep(0.1)  # Send data every 100ms
-
-def start_line_visible_stream():
-    """Accept line visibility signal continuously from client"""
-    global running
-
-    line_visible_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    line_visible_sock.bind((HOST, LINE_VISIBLE_PORT))
-    line_visible_sock.listen(1)
-    conn, addr = line_visible_sock.accept()
-    print(f"LV signal connected by {addr}")
-
-    try:
-        while running:
-            data = conn.recv(1)
-            if data == b'\x01':
-                print(f"Line visible, cannot move forward")
-            elif data == b'\x00':
-                print(f"Line not visible, can move forward")
-            else:
-                print(f"Unknown value")
-    except Exception as e:
-        print(f"Line visibility stream error: {e}")
-    finally:
-        conn.close()
-        line_visible_sock.close()
 
 def start_camera_stream():
     """Stream camera frames to the client."""
@@ -175,10 +149,6 @@ try:
     camera_thread = threading.Thread(target=start_camera_stream, daemon=True)
     camera_thread.start()
 
-    # Start line visibility signal thread
-    lv_thread = threading.Thread(target=start_line_visible_stream, daemon=True)
-    lv_thread.start()
-
     # Command server setup
     print("Waiting for connection...")
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -200,7 +170,7 @@ try:
                     print("Client disconnected.")
                     break
 
-                #print(f"Received command: {data}")
+                print(f"Received command: {data}")
                 
                 # Parameters
                 time_interval = 0.005  # Time interval between readings in seconds
@@ -242,8 +212,7 @@ try:
                 elif data == 'stop':
                     stop()
                 else:
-                    #print(f"Unknown command: {data}")
-                    pass
+                    print(f"Unknown command: {data}")
             except ConnectionResetError:
                 print("Connection reset by peer. Closing connection.")
                 break
@@ -261,3 +230,4 @@ finally:
     GPIO.cleanup()
     sock.close()
     print("Server closed.")
+    

@@ -4,9 +4,9 @@ import time
 import threading
 import IMU
 import cv2
-#import struct
+import struct
 #import pickle
-#from picamera2 import Picamera2
+from picamera2 import Picamera2
 
 # Motor pins
 in1 = 17
@@ -98,52 +98,66 @@ def set_speed(speed):
 # Server Setup
 HOST = ''  # Listen on all available interfaces
 PORT = 8080  # Port for commands
-# CAMERA_PORT = 8081  # Port for camera stream
+CAMERA_PORT = 8081  # Port for camera stream
 
-# running = True
+running = True
 
 # def imu_data_sender(conn):
-#    """Send IMU data continuously to the client."""
-#    global running
-#    while running:
-#        imu_data = process_imu_data()
-#        imu_message = f"imu_data|acc:{imu_data['acc']}|gyro:{imu_data['gyro']}|mag:{imu_data['mag']}\n"
-#        try:
-#            conn.sendall(imu_message.encode())
-#        except Exception as e:
-#            print(f"Error sending IMU data: {e}")
-#            break
-#        time.sleep(0.1)  # Send data every 100ms
+#     """Send IMU data continuously to the client."""
+#     global running
+#     while running:
+#         imu_data = process_imu_data()
+#         imu_message = f"imu_data|acc:{imu_data['acc']}|gyro:{imu_data['gyro']}|mag:{imu_data['mag']}\n"
+#         try:
+#             conn.sendall(imu_message.encode())
+#         except Exception as e:
+#             print(f"Error sending IMU data: {e}")
+#             break
+#         time.sleep(0.1)  # Send data every 100ms
 
-# def start_camera_stream():
-#    """Stream camera frames to the client."""
-#    global running
-#    picam2 = Picamera2()
-#    picam2.configure(picam2.create_preview_configuration(main={"size": (640, 480)}))
-#    picam2.start()
+def start_camera_stream():
+    """Stream camera frames to the client."""
+    global running
+    picam2 = Picamera2()
+    picam2.configure(picam2.create_preview_configuration(main={"size": (640, 480)}))
+    picam2.start()
 
-#    camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#    camera_socket.bind((HOST, CAMERA_PORT))
-#    camera_socket.listen(1)
-#    print("Waiting for camera connection...")
-#    conn, addr = camera_socket.accept()
-#    print(f"Camera connected by {addr}")
+    camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    camera_socket.bind((HOST, CAMERA_PORT))
+    camera_socket.listen(1)
+    print("Waiting for camera connection...")
+    conn, addr = camera_socket.accept()
+    print(f"Camera connected by {addr}")
 
-#    try:
-#        while running:
-#            frame = picam2.capture_array()
-#            # Convert frame to RGB
-#            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    try:
+        while running:
+            frame = picam2.capture_array()
+            # Convert frame to RGB
+            # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
             # Serialize and send the frame
-#           data = pickle.dumps(frame)
-#            conn.sendall(struct.pack("L", len(data)) + data)
-#    except Exception as e:
-#        print(f"Camera stream error: {e}")
-#    finally:
-#        picam2.stop()
-#        conn.close()
-#        camera_socket.close()
+            # data = pickle.dumps(frame)
+            # conn.sendall(struct.pack("L", len(data)) + data)
+
+            # Convert to JPEG
+            _, jpeg = cv2.imencode('.jpg', frame)
+            frame_bytes = jpeg.tobytes()
+            
+            # Send the size of the frame first
+            frame_size = len(frame_bytes)
+            conn.sendall(struct.pack("!I", frame_size))  # Send the size of the image
+            
+            # Send the actual image data
+            conn.sendall(frame_bytes)
+
+            # Wait a little (in sec) before sending the next frame
+            time.sleep(0.25)
+    except Exception as e:
+        print(f"Camera stream error: {e}")
+    finally:
+        picam2.stop()
+        conn.close()
+        camera_socket.close()
 
 try:
     # GPIO Initialization
@@ -156,8 +170,8 @@ try:
     print("IMU Initialized.")
 
     # Start camera stream thread
-    # camera_thread = threading.Thread(target=start_camera_stream, daemon=True)
-    # camera_thread.start()
+    camera_thread = threading.Thread(target=start_camera_stream, daemon=True)
+    camera_thread.start()
 
     # Command server setup
     print("Waiting for connection...")
@@ -231,11 +245,11 @@ try:
 
 
 finally:
-    # running = False  # Stop the IMU thread
+    running = False  # Stop the IMU thread
     # if imu_thread.is_alive():
-        # imu_thread.join()
-#     if camera_thread.is_alive():
-#        camera_thread.join()
+    #     imu_thread.join()
+    if camera_thread.is_alive():
+        camera_thread.join()
     stop()
     pwm_a.stop()
     pwm_b.stop()

@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel
 from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt, QPoint, QTimer
 from enum import Enum
 from linedetect import detectLines
 import sys
@@ -10,9 +10,8 @@ import threading
 import time
 import difflib
 import speech_recognition as sr
-import multiprocessing
 import struct
-# import pickle
+import pickle
 import cv2
 import numpy as np
 
@@ -91,10 +90,10 @@ class MazeWindow(QMainWindow):
         self.regenerate_button.clicked.connect(self.regenerate_maze)
 
         # Add IMU Data Label
-        # self.imu_label = QLabel("IMU Data: N/A", self)
-        # self.imu_label.setGeometry(775, 650, 640, 200)  # Centered below the camera feed
-        # self.imu_label.setAlignment(Qt.AlignCenter)
-        # self.imu_label.setStyleSheet("font-size: 14px; font-weight: bold;")
+        self.imu_label = QLabel("IMU Data: N/A", self)
+        self.imu_label.setGeometry(775, 650, 640, 200)  # Centered below the camera feed
+        self.imu_label.setAlignment(Qt.AlignCenter)
+        self.imu_label.setStyleSheet("font-size: 14px; font-weight: bold;")
 
         # Add Camera Feed Label
         self.camera_feed_label = QLabel("Camera Feed", self)
@@ -111,8 +110,8 @@ class MazeWindow(QMainWindow):
         self.setup_dpad()
 
         # Start a background thread to listen for IMU data
-        # self.imu_data_thread = threading.Thread(target=self.receive_imu_data, daemon=True)
-        # self.imu_data_thread.start()
+        self.imu_data_thread = threading.Thread(target=self.receive_imu_data, daemon=True)
+        self.imu_data_thread.start()
 
         # Start thread for camera
         self.latest_frame = None
@@ -121,7 +120,7 @@ class MazeWindow(QMainWindow):
         self.camera_processing_thread = threading.Thread(target=self.process_camera_data, daemon=True)
         self.camera_thread.start()
         self.camera_processing_thread.start()
-
+        
         # Add voice command listener
         self.voice_thread = threading.Thread(target=self.listen, daemon=True)
         self.voice_thread.start()
@@ -134,6 +133,11 @@ class MazeWindow(QMainWindow):
         self.voice_toggle_button.setGeometry(300, 800, 200, 40)  # Position at bottom-center
         self.voice_toggle_button.setCheckable(True)
         self.voice_toggle_button.clicked.connect(self.toggle_voice_commands)
+
+        # Set up timer for periodically receiving camera data
+        # self.timer = QTimer(self)
+        # self.timer.timeout.connect(self.receive_camera_data)
+        # self.timer.start(250)  # 250ms interval; 4 FPS 
 
     def setup_controller_client(self):
         """Set up a client socket to connect to 'controller.py'."""
@@ -229,71 +233,37 @@ class MazeWindow(QMainWindow):
         self.down_button.setGeometry(dpad_center_x - int(0.5 * dpad_button_width), dpad_center_y + int(0.5 * dpad_button_height + dpad_button_margin), dpad_button_width, dpad_button_height)
         self.down_button.clicked.connect(lambda: self.movePlayer(2))"""
 
-    # def receive_imu_data(self):
-    #     """Continuously receive IMU data from the RPi"""
-    #    if self.socket_client:
-    #        buffer = ""
-    #        while True:
-    #            try:
-    #                # Read data from the socket
-    #                data = self.socket_client.recv(2048).decode()
-    #                if not data:
-    #                    break  # Connection closed
+    def receive_imu_data(self):
+        """Continuously receive IMU data from the RPi"""
+        if self.socket_client:
+            buffer = ""
+            while True:
+                try:
+                    # Read data from the socket
+                    data = self.socket_client.recv(2048).decode()
+                    if not data:
+                        break  # Connection closed
 
                     # Add data to buffer and process complete messages
-    #                buffer += data
-    #                while "\n" in buffer:
-    #                    message, buffer = buffer.split("\n", 1)  # Split at the first newline
-    #                    self.process_imu_message(message.strip())
-    #            except Exception as e:
-    #                print(f"Failed to receive data: {e}")
-    #                break
+                    buffer += data
+                    while "\n" in buffer:
+                        message, buffer = buffer.split("\n", 1)  # Split at the first newline
+                        self.process_imu_message(message.strip())
+                except Exception as e:
+                    print(f"Failed to receive data: {e}")
+                    break
 
-    # def process_imu_message(self, message):
-    #     """Process a single IMU message."""
-    #    if message.startswith("imu_data"):
-    #        try:
-    #            _, acc_data, gyro_data, mag_data = message.split("|")
-    #            acc_values = acc_data.replace("acc:", "")
-    #            gyro_values = gyro_data.replace("gyro:", "")
-    #            mag_values = mag_data.replace("mag:", "")
-    #            self.imu_label.setText(f"IMU Data\nAcc: {acc_values}\nGyro: {gyro_values}\nMag: {mag_values}")
-    #        except ValueError:
-    #            print("Malformed IMU data received:", message)
-
-
-#    def receive_camera_data(self):
-#       try:
-#            camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#            camera_socket.connect((self.server_host, self.camera_port))
-#            data = b""
-
-#            while True:
-                # Receive frame length
-#                while len(data) < struct.calcsize("L"):
-#                    data += camera_socket.recv(4096)
-#                packed_len = data[:struct.calcsize("L")]
-#                data = data[struct.calcsize("L"):]
-#                frame_len = struct.unpack("L", packed_len)[0]
-
-                # Receive frame data
-#                while len(data) < frame_len:
-#                    data += camera_socket.recv(4096)
-#                frame_data = data[:frame_len]
-#                data = data[frame_len:]
-
-                # Deserialize frame
-#                frame = pickle.loads(frame_data)
-
-                # Convert to QImage and display
-#                height, width, channel = frame.shape
-#                bytes_per_line = channel * width
-#                qimg = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
-#                pixmap = QPixmap.fromImage(qimg)
-
-#                self.camera_label.setPixmap(pixmap)
-#        except Exception as e:
-#            print(f"Failed to receive camera data: {e}")
+    def process_imu_message(self, message):
+        """Process a single IMU message."""
+        if message.startswith("imu_data"):
+            try:
+                _, acc_data, gyro_data, mag_data = message.split("|")
+                acc_values = acc_data.replace("acc:", "")
+                gyro_values = gyro_data.replace("gyro:", "")
+                mag_values = mag_data.replace("mag:", "")
+                self.imu_label.setText(f"IMU Data\nAcc: {acc_values}\nGyro: {gyro_values}\nMag: {mag_values}")
+            except ValueError:
+                print("Malformed IMU data received:", message)
 
     def receive_camera_data(self):
         self.socket_camera = self.setup_socket_camera()
@@ -331,32 +301,32 @@ class MazeWindow(QMainWindow):
                 frame = self.latest_frame.copy()
 
             # Get probabilistic Hough lines from image
-            lines = detectLines(frame)
+            lines, checkImage = detectLines(frame)
 
             # Draw detected line segments onto image
-            if lines is not None and lines.any():
-                for line in lines:
-                    x1, y1, x2, y2 = line[0]
-                    cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            # if lines is not None and lines.any():
+            #     for line in lines:
+            #         x1, y1, x2, y2 = line[0]
+            #         cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-            #frame = checkImage
+            frame = checkImage
 
             # Debug section to find pixel coordinates
             bound_centerX = 160     # distance from center in both dirs at x = 320, max 320
             bound_upperY = 240      # top = 0, bottom = 480
-            cv2.line(frame, (320 - bound_centerX, bound_upperY), (320 - bound_centerX, 480), (255, 0, 0), 2)
-            cv2.line(frame, (320 + bound_centerX, bound_upperY), (320 + bound_centerX, 480), (255, 0, 0), 2)
-            cv2.line(frame, (320 - bound_centerX, bound_upperY), (320 + bound_centerX, bound_upperY), (255, 0, 0), 2)
+            #cv2.line(frame, (320 - bound_centerX, bound_upperY), (320 - bound_centerX, 480), (255, 0, 0), 2)
+            #cv2.line(frame, (320 + bound_centerX, bound_upperY), (320 + bound_centerX, 480), (255, 0, 0), 2)
+            #cv2.line(frame, (320 - bound_centerX, bound_upperY), (320 + bound_centerX, bound_upperY), (255, 0, 0), 2)
 
             # Convert frame to QImage for PyQt for color
-            height, width, channels = frame.shape
-            bytes_per_line = channels * width
-            qimage = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
+            #height, width, channels = frame.shape
+            #bytes_per_line = channels * width
+            #qimage = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
             
             # Convert frame to QImage for PyQt for grayscale (when debugging)
-            # height, width = frame.shape
-            # bytes_per_line = width
-            # qimage = QImage(frame.data, width, height, bytes_per_line, QImage.Format_Grayscale8)
+            height, width = frame.shape
+            bytes_per_line = width
+            qimage = QImage(frame.data, width, height, bytes_per_line, QImage.Format_Grayscale8)
             
             pixmap = QPixmap.fromImage(qimage)
 
@@ -365,7 +335,7 @@ class MazeWindow(QMainWindow):
 
             # For camera feed framerate (delay in sec)
             time.sleep(0.25)
-    
+
     def send_command_to_rpi(self, command):
         """Send command to the Maze Navigator."""
         if self.socket_client:
@@ -550,11 +520,8 @@ class MazeWindow(QMainWindow):
 
 # Running the application
 if __name__ == "__main__":
-    # multiprocessing.freeze_support()  # Fix for PyInstaller multi-threading issue
-
     app = QApplication(sys.argv)
-    n, m = 3, 3  # Dimensions of the maze (N x M)
+    n, m = 7, 7  # Dimensions of the maze (N x M)
     window = MazeWindow(n, m)
     window.show()
     sys.exit(app.exec_())
-    
