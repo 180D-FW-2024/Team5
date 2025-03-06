@@ -7,6 +7,7 @@ import cv2
 import struct
 from picamera2 import Picamera2
 import numpy as np
+import datetime
 
 # Motor pins
 in1 = 17
@@ -18,9 +19,17 @@ in4 = 24
 enB = 25
 
 # ROI constants, the top of the frame is 0 and the bottom is 1
-roi_start = 1/4
-roi_end = 1/2
+roi_start = 0
+roi_end = 1/4
 threshold = 0.3 # Threshold for black line detection
+
+# IMU constants
+G_GAIN = 0.070  # [deg/s/LSB] - gyro gain constant
+TURN_ANGLE = 77  # Turn angle in degrees
+
+# Motor speed constants
+DRIVE_SPEED = 60  # Drive speed in percent
+TURN_SPEED = 60  # Turn speed in percent
 
 # GPIO Setup
 def init_GPIO():
@@ -38,8 +47,8 @@ def init_GPIO():
     pwm_b = GPIO.PWM(enB, 1000)
     
     # Start PWM duty cycle
-    pwm_a.start(75)
-    pwm_b.start(75)
+    pwm_a.start(DRIVE_SPEED)
+    pwm_b.start(DRIVE_SPEED)
 
 def backward():
     GPIO.output(in1, True)
@@ -53,6 +62,8 @@ def forward():
     GPIO.output(in2, True)
     GPIO.output(in3, True)
     GPIO.output(in4, False)
+
+    set_speed(DRIVE_SPEED)
     
     check_interval = 0.011  # ~90 Hz checking rate
 
@@ -96,22 +107,59 @@ def stop():
     GPIO.output(in4, False)
 
 def process_imu_data():
+    """Process IMU data and return values in meaningful units"""
     acc_x = IMU.readACCx()
     acc_y = IMU.readACCy()
     acc_z = IMU.readACCz()
-    gyr_x = IMU.readGYRx()
-    gyr_y = IMU.readGYRy()
-    gyr_z = IMU.readGYRz()
+    gyr_x = IMU.readGYRx() * G_GAIN  # Convert to degrees/second
+    gyr_y = IMU.readGYRy() * G_GAIN
+    gyr_z = IMU.readGYRz() * G_GAIN
     mag_x = IMU.readMAGx()
     mag_y = IMU.readMAGy()
     mag_z = IMU.readMAGz()
 
     imu_data = {
         "acc": {"x": acc_x, "y": acc_y, "z": acc_z},
-        "gyro": {"x": gyr_x, "y": gyr_y, "z": gyr_z},
+        "gyro": {"x": gyr_x, "y": gyr_y, "z": gyr_z},  # Now in degrees/second
         "mag": {"x": mag_x, "y": mag_y, "z": mag_z}
     }
     return imu_data
+
+def turn(direction):
+    """
+    Execute a precise turn using IMU
+    direction: 1 for right, -1 for left
+    """
+    current_angle = 0.0
+    initial_time = datetime.datetime.now()
+    target_angle = TURN_ANGLE if direction == -1 else -TURN_ANGLE
+    
+    # Set turn direction
+    if direction == 1:
+        right_turn()
+    else:
+        left_turn()
+    
+    set_speed(TURN_SPEED) # Turn speed
+    
+    try:
+        while abs(current_angle) < abs(target_angle):
+            # Calculate loop period in seconds
+            delta = datetime.datetime.now() - initial_time
+            initial_time = datetime.datetime.now()
+            dt = delta.microseconds / (1000000 * 1.0)
+            
+            # Get gyro data (degrees/second)
+            gyro_z = process_imu_data()["gyro"]["z"]
+            
+            # Integrate angular velocity to get angle
+            current_angle += gyro_z * dt
+            
+            # Debug output
+            print(f"Current: {current_angle:.2f}°, Rate: {gyro_z:.2f}°/s, dt: {dt*1000:.2f}ms")
+
+    finally:
+        stop()
 
 def set_speed(speed):
     """
@@ -241,42 +289,13 @@ try:
                     break
 
                 print(f"Received command: {data}")
-                
-                # Parameters
-                time_interval = 0.005  # Time interval between readings in seconds
-                turning_radius = 450
-                current_dir = 0  # Current direction (angle)
 
                 if data == 'forward':
                     forward()
                 elif data == 'left':
-                    left_turn()
-                    final_dir = turning_radius
-
-                    # Track the angular rotation using integration & stop when you finished your turn
-                    while current_dir < final_dir:
-                        angular_velocity = process_imu_data()["gyro"]["z"]
-
-                        # Integrate angular velocity to calculate angle
-                        current_dir += angular_velocity * time_interval
-                        time.sleep(time_interval)  # Wait for the next reading
-
-                    stop()
-
+                    turn(-1)  # Turn left 90 degrees
                 elif data == 'right':
-                    right_turn()
-                    final_dir = -turning_radius
-
-                    # Track the angular rotation using integration
-                    while current_dir > final_dir:
-                        angular_velocity = process_imu_data()["gyro"]["z"]
-
-                        # Integrate angular velocity to calculate angle
-                        current_dir += angular_velocity * time_interval
-                        time.sleep(time_interval)  # Wait for the next reading
-
-                    stop()
-
+                    turn(1)   # Turn right 90 degrees
                 elif data == 'stop':
                     stop()
                 else:
@@ -295,6 +314,8 @@ finally:
     stop()
     pwm_a.stop()
     pwm_b.stop()
-    GPIO.cleanup()
+    if conn:
+        conn.close()
     sock.close()
-    print("Server closed.")
+    GPIO.cleanup()
+    print("Navigator server closed.")
