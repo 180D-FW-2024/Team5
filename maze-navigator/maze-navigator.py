@@ -20,12 +20,12 @@ enB = 25
 
 # ROI constants, the top of the frame is 0 and the bottom is 1
 roi_start = 0
-roi_end = 1/4
+roi_end = 1/6
 threshold = 0.3 # Threshold for black line detection
 
 # IMU constants
 G_GAIN = 0.070  # [deg/s/LSB] - gyro gain constant
-TURN_ANGLE = 77  # Turn angle in degrees
+TURN_ANGLE = 82  # Turn angle in degrees
 
 # Motor speed constants
 DRIVE_SPEED = 60  # Drive speed in percent
@@ -67,7 +67,7 @@ def forward():
     
     check_interval = 0.011  # ~90 Hz checking rate
 
-    time.sleep(0.3)
+    time.sleep(0.2)
     
     try:
         while True:
@@ -80,7 +80,7 @@ def forward():
                 stop()
                 return True
                 
-            time.sleep(check_interval)
+            # time.sleep(check_interval)
             
     except Exception as e:
         print(f"Error in line detection: {e}")
