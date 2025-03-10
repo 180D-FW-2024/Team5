@@ -21,7 +21,7 @@ enB = 25
 # ROI constants, the top of the frame is 0 and the bottom is 1
 roi_start = 0
 roi_end = 1/6
-threshold = 0.3 # Threshold for black line detection
+threshold = 0.7 # Threshold for black line detection
 
 # IMU constants
 G_GAIN = 0.070  # [deg/s/LSB] - gyro gain constant
@@ -203,54 +203,54 @@ def detect_line(frame):
 # Server Setup
 HOST = ''  # Listen on all available interfaces
 PORT = 8080  # Port for commands
-CAMERA_PORT = 7070  # Port for camera stream
-running = True
+# CAMERA_PORT = 7070  # Port for camera stream
+# running = True
 
 # Camera stream
-def start_camera_stream():
-    """Stream camera frames to GUI with ROI."""
-    global running
-    camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    camera_socket.bind((HOST, CAMERA_PORT))
-    camera_socket.listen(1)
-    print("Waiting for camera connection...")
-    conn, addr = camera_socket.accept()
-    print(f"Camera connected by {addr}")
+# def start_camera_stream():
+#     """Stream camera frames to GUI with ROI."""
+#     global running
+#     camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#     camera_socket.bind((HOST, CAMERA_PORT))
+#     camera_socket.listen(1)
+#     print("Waiting for camera connection...")
+#     conn, addr = camera_socket.accept()
+#     print(f"Camera connected by {addr}")
 
-    try:
-        while running:
-            # Capture and process frame
-            frame = picam2.capture_array()
+#     try:
+#         while running:
+#             # Capture and process frame
+#             frame = picam2.capture_array()
             
-            # Line detection logic and visualization
-            gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-            height = gray.shape[0]
-            roi = gray[int(height * roi_start):int(height * roi_end), :]
-            _, thresh = cv2.threshold(roi, 50, 255, cv2.THRESH_BINARY_INV)
-            black_pixel_percentage = np.sum(thresh == 255) / thresh.size
+#             # Line detection logic and visualization
+#             gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+#             height = gray.shape[0]
+#             roi = gray[int(height * roi_start):int(height * roi_end), :]
+#             _, thresh = cv2.threshold(roi, 50, 255, cv2.THRESH_BINARY_INV)
+#             black_pixel_percentage = np.sum(thresh == 255) / thresh.size
             
-            # Draw ROI and text
-            cv2.rectangle(frame, (0, int(height * roi_start)), (frame.shape[1], int(height * roi_end)), (0, 255, 0), 2)
-            cv2.putText(frame, f"Black: {black_pixel_percentage:.3f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+#             # Draw ROI and text
+#             cv2.rectangle(frame, (0, int(height * roi_start)), (frame.shape[1], int(height * roi_end)), (0, 255, 0), 2)
+#             cv2.putText(frame, f"Black: {black_pixel_percentage:.3f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             
-            # JPEG compression
-            _, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
-            frame_data = jpeg.tobytes()
+#             # JPEG compression
+#             _, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+#             frame_data = jpeg.tobytes()
             
-            # Send frame size followed by frame data
-            try:
-                size = len(frame_data)
-                conn.sendall(struct.pack('<L', size) + frame_data)
-            except ConnectionError:
-                break
+#             # Send frame size followed by frame data
+#             try:
+#                 size = len(frame_data)
+#                 conn.sendall(struct.pack('<L', size) + frame_data)
+#             except ConnectionError:
+#                 break
             
-            time.sleep(0.011)  # ~90 fps
+#             time.sleep(0.011)  # ~90 fps
             
-    except Exception as e:
-        print(f"Camera stream error: {e}")
-    finally:
-        conn.close()
-        camera_socket.close()
+#     except Exception as e:
+#         print(f"Camera stream error: {e}")
+#     finally:
+#         conn.close()
+#         camera_socket.close()
 
 try:
     # GPIO Initialization
@@ -268,8 +268,8 @@ try:
     print("IMU Initialized.")
 
     # Start camera stream thread
-    camera_thread = threading.Thread(target=start_camera_stream, daemon=True)
-    camera_thread.start()
+    # camera_thread = threading.Thread(target=start_camera_stream, daemon=True)
+    # camera_thread.start()
 
     # Command server setup
     print("Waiting for connection...")
@@ -308,9 +308,9 @@ try:
 
 
 finally:
-    running = False  # Stop the camera thread
-    if camera_thread.is_alive():
-        camera_thread.join()
+    # running = False  # Stop the camera thread
+    # if camera_thread.is_alive():
+    #     camera_thread.join()
     stop()
     pwm_a.stop()
     pwm_b.stop()

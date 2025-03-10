@@ -80,7 +80,7 @@ class MazeWindow(QMainWindow):
         # Socket connection setup for Maze Navigator
         self.server_host = '100.94.211.35' # Maze Navigator Tailscale IP
         self.server_port = 8080
-        self.camera_port = 7070
+        # self.camera_port = 7070 # UNCOMMENT THIS LINE FOR CAMERA FEED
         self.socket_client = self.setup_socket_client()
 
         # Add the regenerate button
@@ -89,22 +89,22 @@ class MazeWindow(QMainWindow):
         self.regenerate_button.clicked.connect(self.regenerate_maze)
 
         # Add Camera Feed Label
-        self.camera_feed_label = QLabel("Camera Feed", self)
-        self.camera_feed_label.setGeometry(775, 75, 640, 20)  # Positioned above the camera feed
-        self.camera_feed_label.setAlignment(Qt.AlignCenter)
-        self.camera_feed_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        # self.camera_feed_label = QLabel("Camera Feed", self)
+        # self.camera_feed_label.setGeometry(775, 75, 640, 20)  # Positioned above the camera feed
+        # self.camera_feed_label.setAlignment(Qt.AlignCenter)
+        # self.camera_feed_label.setStyleSheet("font-size: 16px; font-weight: bold;")
 
         # Add Camera Label
-        self.camera_label = QLabel(self)
-        self.camera_label.setGeometry(775, 100, 640, 480)
-        self.camera_label.setStyleSheet("border: 1px solid black;")
+        # self.camera_label = QLabel(self)
+        # self.camera_label.setGeometry(775, 100, 640, 480)
+        # self.camera_label.setStyleSheet("border: 1px solid black;")
 
         # Add on-screen D-Pad buttons
         self.setup_dpad()
 
         # Start thread for camera
-        self.camera_thread = threading.Thread(target=self.receive_camera_data, daemon=True)
-        self.camera_thread.start()
+        # self.camera_thread = threading.Thread(target=self.receive_camera_data, daemon=True)
+        # self.camera_thread.start()
 
         # Add voice command listener
         self.voice_thread = threading.Thread(target=self.listen, daemon=True)
@@ -118,20 +118,6 @@ class MazeWindow(QMainWindow):
         self.voice_toggle_button.setGeometry(300, 800, 200, 40)  # Position at bottom-center
         self.voice_toggle_button.setCheckable(True)
         self.voice_toggle_button.clicked.connect(self.toggle_voice_commands)
-
-        # Camera feed display setup
-        self.camera_feed_label = QLabel("Camera Feed", self)
-        self.camera_feed_label.setGeometry(775, 75, 640, 20)
-        self.camera_feed_label.setAlignment(Qt.AlignCenter)
-        self.camera_feed_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-
-        self.camera_label = QLabel(self)
-        self.camera_label.setGeometry(775, 100, 640, 480)
-        self.camera_label.setStyleSheet("border: 1px solid black;")
-
-        # Start camera thread
-        self.camera_thread = threading.Thread(target=self.receive_camera_data, daemon=True)
-        self.camera_thread.start()
 
     def setup_controller_client(self):
         """Set up a client socket to connect to 'controller.py'."""
@@ -212,72 +198,72 @@ class MazeWindow(QMainWindow):
         self.down_button.setGeometry(dpad_center_x - int(0.5 * dpad_button_width), dpad_center_y + int(0.5 * dpad_button_height + dpad_button_margin), dpad_button_width, dpad_button_height)
         self.down_button.clicked.connect(lambda: self.movePlayer(2))"""
 
-
-    def receive_camera_data(self):
-        """Receive and display camera feed from Maze Navigator"""
-        while True:
-            try:
-                camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                camera_socket.connect((self.server_host, self.camera_port))
-                print("Connected to camera stream")
+    ### UNCOMMENT FOR CAMERA FEED
+    # def receive_camera_data(self):
+    #     """Receive and display camera feed from Maze Navigator"""
+    #     while True:
+    #         try:
+    #             camera_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #             camera_socket.connect((self.server_host, self.camera_port))
+    #             print("Connected to camera stream")
                 
-                data = b""
-                payload_size = struct.calcsize("<L")
+    #             data = b""
+    #             payload_size = struct.calcsize("<L")
 
-                while True:
-                    # Get frame size
-                    while len(data) < payload_size:
-                        packet = camera_socket.recv(4096)
-                        if not packet:
-                            raise ConnectionError("Connection lost")
-                        data += packet
+    #             while True:
+    #                 # Get frame size
+    #                 while len(data) < payload_size:
+    #                     packet = camera_socket.recv(4096)
+    #                     if not packet:
+    #                         raise ConnectionError("Connection lost")
+    #                     data += packet
                     
-                    packed_size = data[:payload_size]
-                    data = data[payload_size:]
-                    frame_size = struct.unpack("<L", packed_size)[0]
+    #                 packed_size = data[:payload_size]
+    #                 data = data[payload_size:]
+    #                 frame_size = struct.unpack("<L", packed_size)[0]
 
-                    # Get frame data
-                    while len(data) < frame_size:
-                        packet = camera_socket.recv(4096)
-                        if not packet:
-                            raise ConnectionError("Connection lost")
-                        data += packet
+    #                 # Get frame data
+    #                 while len(data) < frame_size:
+    #                     packet = camera_socket.recv(4096)
+    #                     if not packet:
+    #                         raise ConnectionError("Connection lost")
+    #                     data += packet
 
-                    frame_data = data[:frame_size]
-                    data = data[frame_size:]
+    #                 frame_data = data[:frame_size]
+    #                 data = data[frame_size:]
 
-                    # Decode JPEG to numpy array
-                    frame = cv2.imdecode(
-                        np.frombuffer(frame_data, dtype=np.uint8),
-                        cv2.IMREAD_COLOR
-                    )
+    #                 # Decode JPEG to numpy array
+    #                 frame = cv2.imdecode(
+    #                     np.frombuffer(frame_data, dtype=np.uint8),
+    #                     cv2.IMREAD_COLOR
+    #                 )
                     
-                    # Convert BGR to RGB for Qt
-                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    #                 # Convert BGR to RGB for Qt
+    #                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     
-                    # Convert to Qt format
-                    height, width, channel = frame.shape
-                    bytes_per_line = channel * width
-                    qt_image = QImage(
-                        frame.data, 
-                        width, 
-                        height, 
-                        bytes_per_line,
-                        QImage.Format_RGB888
-                    )
+    #                 # Convert to Qt format
+    #                 height, width, channel = frame.shape
+    #                 bytes_per_line = channel * width
+    #                 qt_image = QImage(
+    #                     frame.data, 
+    #                     width, 
+    #                     height, 
+    #                     bytes_per_line,
+    #                     QImage.Format_RGB888
+    #                 )
                     
-                    # Update the label with the new image
-                    self.camera_label.setPixmap(QPixmap.fromImage(qt_image))
+    #                 # Update the label with the new image
+    #                 self.camera_label.setPixmap(QPixmap.fromImage(qt_image))
 
-            except Exception as e:
-                print(f"Camera feed error: {e}")
-                time.sleep(1)  # Wait before retrying
-                continue
-            finally:
-                try:
-                    camera_socket.close()
-                except:
-                    pass
+    #         except Exception as e:
+    #             print(f"Camera feed error: {e}")
+    #             time.sleep(1)  # Wait before retrying
+    #             continue
+    #         finally:
+    #             try:
+    #                 camera_socket.close()
+    #             except:
+    #                 pass
     
     def send_command_to_rpi(self, command):
         """Send command to the Maze Navigator."""
