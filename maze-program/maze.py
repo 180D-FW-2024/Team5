@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel
-from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap
+from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap, QColor, QFont
 from PyQt5.QtCore import Qt, QPoint
 from enum import Enum
 import sys
@@ -61,7 +61,7 @@ class MazeWindow(QMainWindow):
 
         # Initial player position
         self.player_x, self.player_y = 0, 0
-        self.player_dir = Dir.UP.value
+        self.player_dir = Dir.RIGHT.value
 
         # Add a cooldown attribute
         self.last_keypress_time = 0  # Timestamp of the last key press
@@ -350,6 +350,8 @@ class MazeWindow(QMainWindow):
         """Regenerate the maze and refresh the display."""
         self.maze = generate_maze(self.n, self.m)
         self.update()  # Refresh the GUI
+        self.player_x, self.player_y = 0, 0
+        self.player_dir = Dir.RIGHT.value
 
     def movePlayer(self):
         """Update player position by moving forward"""
@@ -421,7 +423,10 @@ class MazeWindow(QMainWindow):
 
     def paintEvent(self, event):
         painter = QPainter(self)
+        painter.begin(self)
         painter.setPen(QPen(Qt.black, 2))
+        line_width = 2
+        color_cell_offset = 6
 
         for x in range(self.n):
             for y in range(self.m):
@@ -436,6 +441,41 @@ class MazeWindow(QMainWindow):
                     painter.drawLine(cx, cy + self.cell_size, cx + self.cell_size, cy + self.cell_size)
                 if cell['walls'][3]:  # Left wall
                     painter.drawLine(cx, cy, cx, cy + self.cell_size)
+
+                # Color and name the START square
+                if x == 0 and y == 0:
+                    painter.setPen(Qt.NoPen)  # Disable border outline
+                    painter.setBrush(QColor(0, 100, 0))  # Green fill for the start cell
+                    painter.drawRect(cx + 3, cy + 3, self.cell_size - color_cell_offset, self.cell_size - color_cell_offset)  # Draw cell
+
+                    # Draw "Start" text in the top-left cell
+                    painter.setPen(QPen(QColor(0, 0, 0)))
+                    painter.setFont(QFont("Arial", 16, QFont.Bold))
+                    text_x = cx + self.cell_size // 2 - 18
+                    text_y = cy + self.cell_size // 5  # top of the cell
+                    painter.drawText(text_x, text_y, "Start")
+
+                    pen = QPen(QColor(0,0,0))
+                    pen.setWidth(line_width)  # Set thickness
+                    painter.setPen(pen)
+
+
+                # Color and name the GOAL square
+                elif x == (self.n-1) and y == (self.m-1):
+                    painter.setPen(Qt.NoPen)  # Disable border outline
+                    painter.setBrush(QColor(139, 0, 0))  # Red fill for the start cell
+                    painter.drawRect(cx + 3, cy + 3, self.cell_size - color_cell_offset, self.cell_size - color_cell_offset)  # Draw cell
+                    
+                    # Draw "Goal" text in the top-left cell
+                    painter.setPen(QPen(QColor(0, 0, 0)))
+                    painter.setFont(QFont("Arial", 16, QFont.Bold))
+                    text_x = cx + self.cell_size // 2 - 18
+                    text_y = cy + self.cell_size // 5  # top of the cell
+                    painter.drawText(text_x, text_y, "Goal")
+
+                    pen = QPen(QColor(0,0,0))
+                    pen.setWidth(line_width)  # Set thickness
+                    painter.setPen(pen)
 
         painter.setBrush(Qt.red)
         player_pos = QPoint(50 + int(self.cell_size * (self.player_x + 0.5)), 50 + int(self.cell_size * (self.player_y + 0.5)))
