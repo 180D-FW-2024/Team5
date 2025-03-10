@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel
-from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap, QColor, QFont
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap, QColor, QFont, QPolygon
+from PyQt5.QtCore import Qt, QPoint, QRect, QTimer
 from enum import Enum
 import sys
 import random
@@ -53,6 +53,9 @@ class MazeWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Maze Generator")
         self.setGeometry(100, 100, 800, 900)
+        #self.showMaximized()
+        self.setStyleSheet("background-color: antiquewhite;") 
+        QTimer.singleShot(0, self.showMaximized)
         self.n, self.m = n, m  # Maze dimensions
         self.cell_size = min(700 // n, 700 // m)  # Fit the maze into the window
 
@@ -85,8 +88,15 @@ class MazeWindow(QMainWindow):
 
         # Add the regenerate button
         self.regenerate_button = QPushButton("Regenerate Maze", self)
+        self.regenerate_button.setStyleSheet("background-color: #FFFAF5;")
         self.regenerate_button.setGeometry(50, 800, 200, 40)  # Position at bottom-left
         self.regenerate_button.clicked.connect(self.regenerate_maze)
+
+        # Add the restart button
+        self.restart_button = QPushButton("Restart", self)
+        self.restart_button.setStyleSheet("background-color: #FFFAF5;")
+        self.restart_button.setGeometry(50, 900, 200, 40)  # Position at bottom-left
+        self.restart_button.clicked.connect(self.restart_maze)
 
         # Add Camera Feed Label
         self.camera_feed_label = QLabel("Camera Feed", self)
@@ -115,6 +125,7 @@ class MazeWindow(QMainWindow):
 
         # Add a voice toggle button
         self.voice_toggle_button = QPushButton("Enable Voice Commands", self)
+        self.voice_toggle_button.setStyleSheet("background-color: #FFFAF5;")
         self.voice_toggle_button.setGeometry(300, 800, 200, 40)  # Position at bottom-center
         self.voice_toggle_button.setCheckable(True)
         self.voice_toggle_button.clicked.connect(self.toggle_voice_commands)
@@ -197,14 +208,17 @@ class MazeWindow(QMainWindow):
         dpad_button_margin = 10   # extra space between buttons
 
         self.left_button = QPushButton("↺", self)
+        self.left_button.setStyleSheet("background-color: #FFFAF5;")
         self.left_button.setGeometry(dpad_center_x - int(1.5 * dpad_button_width) - dpad_button_margin, dpad_center_y - int(0.5 * dpad_button_height), dpad_button_width, dpad_button_height)
         self.left_button.clicked.connect(lambda: self.rotatePlayer(0))
 
         self.up_button = QPushButton("↑", self)
+        self.up_button.setStyleSheet("background-color: #FFFAF5;")
         self.up_button.setGeometry(dpad_center_x - int(0.5 * dpad_button_width), dpad_center_y - int(1.5 * dpad_button_height) - dpad_button_margin, dpad_button_width, dpad_button_height)
         self.up_button.clicked.connect(lambda: self.movePlayer())
 
         self.right_button = QPushButton("↻", self)
+        self.right_button.setStyleSheet("background-color: #FFFAF5;")
         self.right_button.setGeometry(dpad_center_x + int(0.5 * dpad_button_width) + dpad_button_margin, dpad_center_y - int(0.5 * dpad_button_height), dpad_button_width, dpad_button_height)
         self.right_button.clicked.connect(lambda: self.rotatePlayer(1))
 
@@ -349,9 +363,15 @@ class MazeWindow(QMainWindow):
     def regenerate_maze(self):
         """Regenerate the maze and refresh the display."""
         self.maze = generate_maze(self.n, self.m)
-        self.update()  # Refresh the GUI
         self.player_x, self.player_y = 0, 0
         self.player_dir = Dir.RIGHT.value
+        self.update()  # Refresh the GUI
+
+    def restart_maze(self):
+        """Reset player position and refresh the display."""
+        self.player_x, self.player_y = 0, 0
+        self.player_dir = Dir.RIGHT.value
+        self.update()  # Refresh the GUI
 
     def movePlayer(self):
         """Update player position by moving forward"""
@@ -423,10 +443,41 @@ class MazeWindow(QMainWindow):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.begin(self)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(255, 250, 245))
+        painter.drawRect(QRect(50, 50, 700, 700))
+        color_cell_offset = 15
+
+        # START square -- green
+        painter.setBrush(QColor(127, 255, 127))
+        painter.drawRect(QRect(50 + color_cell_offset, 50 + color_cell_offset, self.cell_size - (2 * color_cell_offset), self.cell_size - (2 * color_cell_offset)))
+
+        # GOAL square -- red
+        painter.setBrush(QColor(255, 127, 127))
+        painter.drawRect(QRect(50 + ((self.m - 1) * self.cell_size) + color_cell_offset, 50 + ((self.n - 1) * self.cell_size) + color_cell_offset, self.cell_size - (2 * color_cell_offset), self.cell_size - (2 * color_cell_offset)))
+
+        # START square -- text
+        painter.setPen(QPen(QColor(0, 0, 0)))
+        painter.setFont(QFont("Arial", 16, QFont.Bold))
+        text_start = "Start"
+        text_start_rect = painter.boundingRect(0, 0, 0, 0, Qt.AlignLeft, text_start)
+        #text_start_x = cx + self.cell_size // 2 - 18
+        #text_start_y = cy + self.cell_size // 5  # top of the cell
+        text_start_x = (self.cell_size - text_start_rect.width()) // 2
+        text_start_y = (self.cell_size - text_start_rect.height()) // 2
+        painter.drawText(50 + text_start_x, 50 + 50, text_start)
+
+        # GOAL square -- text
+        text_end = "Goal"
+        text_end_rect = painter.boundingRect(0, 0, 0, 0, Qt.AlignLeft, text_start)
+        #text_start_x = cx + self.cell_size // 2 - 18
+        #text_start_y = cy + self.cell_size // 5  # top of the cell
+        text_end_x = (self.cell_size - text_end_rect.width()) // 2
+        text_end_y = (self.cell_size - text_end_rect.height()) // 2
+        painter.drawText(50 + ((self.m - 1) * self.cell_size) + text_end_x, 50 + 50 + ((self.n - 1) * self.cell_size), text_end)
+
+        # Prep for drawing maze walls
         painter.setPen(QPen(Qt.black, 2))
-        line_width = 2
-        color_cell_offset = 6
 
         for x in range(self.n):
             for y in range(self.m):
@@ -442,62 +493,20 @@ class MazeWindow(QMainWindow):
                 if cell['walls'][3]:  # Left wall
                     painter.drawLine(cx, cy, cx, cy + self.cell_size)
 
-                # Color and name the START square
-                if x == 0 and y == 0:
-                    painter.setPen(Qt.NoPen)  # Disable border outline
-                    painter.setBrush(QColor(0, 100, 0))  # Green fill for the start cell
-                    painter.drawRect(cx + 3, cy + 3, self.cell_size - color_cell_offset, self.cell_size - color_cell_offset)  # Draw cell
-
-                    # Draw "Start" text in the top-left cell
-                    painter.setPen(QPen(QColor(0, 0, 0)))
-                    painter.setFont(QFont("Arial", 16, QFont.Bold))
-                    text_x = cx + self.cell_size // 2 - 18
-                    text_y = cy + self.cell_size // 5  # top of the cell
-                    painter.drawText(text_x, text_y, "Start")
-
-                    pen = QPen(QColor(0,0,0))
-                    pen.setWidth(line_width)  # Set thickness
-                    painter.setPen(pen)
-
-
-                # Color and name the GOAL square
-                elif x == (self.n-1) and y == (self.m-1):
-                    painter.setPen(Qt.NoPen)  # Disable border outline
-                    painter.setBrush(QColor(139, 0, 0))  # Red fill for the start cell
-                    painter.drawRect(cx + 3, cy + 3, self.cell_size - color_cell_offset, self.cell_size - color_cell_offset)  # Draw cell
-                    
-                    # Draw "Goal" text in the top-left cell
-                    painter.setPen(QPen(QColor(0, 0, 0)))
-                    painter.setFont(QFont("Arial", 16, QFont.Bold))
-                    text_x = cx + self.cell_size // 2 - 18
-                    text_y = cy + self.cell_size // 5  # top of the cell
-                    painter.drawText(text_x, text_y, "Goal")
-
-                    pen = QPen(QColor(0,0,0))
-                    pen.setWidth(line_width)  # Set thickness
-                    painter.setPen(pen)
-
         painter.setBrush(Qt.red)
         player_pos = QPoint(50 + int(self.cell_size * (self.player_x + 0.5)), 50 + int(self.cell_size * (self.player_y + 0.5)))
 
-        """Delete below when we have a better shape"""
-        test_x_offset, test_y_offset = 0, 0
+        arrow = QPolygon([
+            QPoint(player_pos.x(), player_pos.y() - 25),  # Top (point)
+            QPoint(player_pos.x() - 20, player_pos.y() + 25),  # Left (tail)
+            QPoint(player_pos.x(), player_pos.y() + 10), # Center
+            QPoint(player_pos.x() + 20, player_pos.y() + 25),  # Right (tail)
+        ])
 
-        if self.player_dir == Dir.UP.value:
-            test_y_offset = -30
-        elif self.player_dir == Dir.RIGHT.value:
-            test_x_offset = 30
-        elif self.player_dir == Dir.DOWN.value:
-            test_y_offset = 30
-        elif self.player_dir == Dir.LEFT.value:
-            test_x_offset = -30
-
-        player_face = QPoint(player_pos.x() + test_x_offset, player_pos.y() + test_y_offset)
-        painter.drawEllipse(player_face, 10, 10)
-        """Delete above whne we have a better shape"""
-
-        painter.drawEllipse(player_pos, 25, 25)
-        
+        painter.translate(player_pos)
+        painter.rotate(self.player_dir * 90)  # 0: North, 1: East, 2: South, 3: West
+        painter.translate(-player_pos)
+        painter.drawPolygon(arrow)
 
         # painter.setBrush(Qt.NoBrush)
 
