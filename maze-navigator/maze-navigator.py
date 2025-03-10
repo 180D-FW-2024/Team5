@@ -21,7 +21,7 @@ enB = 25
 # ROI constants, the top of the frame is 0 and the bottom is 1
 roi_start = 0
 roi_end = 1/6
-threshold = 0.7 # Threshold for black line detection
+threshold = 0.5 # Threshold for black line detection
 
 # IMU constants
 G_GAIN = 0.070  # [deg/s/LSB] - gyro gain constant
@@ -67,7 +67,7 @@ def forward():
     
     check_interval = 0.011  # ~90 Hz checking rate
 
-    time.sleep(0.2)
+    time.sleep(0.3)
     
     try:
         while True:
