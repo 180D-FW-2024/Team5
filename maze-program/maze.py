@@ -58,9 +58,11 @@ class MazeWindow(QMainWindow):
         QTimer.singleShot(0, self.showMaximized)
         self.n, self.m = n, m  # Maze dimensions
         self.cell_size = min(700 // n, 700 // m)  # Fit the maze into the window
+        self.game_started = False
+        self.game_over = True
 
         # Initial maze
-        self.maze = generate_maze(n, m)
+        # self.maze = generate_maze(n, m)
 
         # Initial player position
         self.player_x, self.player_y = 0, 0
@@ -87,15 +89,15 @@ class MazeWindow(QMainWindow):
         self.socket_client = self.setup_socket_client()
 
         # Add the regenerate button
-        self.regenerate_button = QPushButton("Regenerate Maze", self)
+        self.regenerate_button = QPushButton("Start", self)
         self.regenerate_button.setStyleSheet("background-color: #FFFAF5;")
         self.regenerate_button.setGeometry(50, 800, 200, 40)  # Position at bottom-left
         self.regenerate_button.clicked.connect(self.regenerate_maze)
 
         # Add the restart button
-        self.restart_button = QPushButton("Restart", self)
+        self.restart_button = QPushButton("Restart Current Maze", self)
         self.restart_button.setStyleSheet("background-color: #FFFAF5;")
-        self.restart_button.setGeometry(50, 900, 200, 40)  # Position at bottom-left
+        self.restart_button.setGeometry(50, 850, 200, 40)  # Position at bottom-left
         self.restart_button.clicked.connect(self.restart_maze)
 
         # Add Camera Feed Label
@@ -348,59 +350,67 @@ class MazeWindow(QMainWindow):
 
     def regenerate_maze(self):
         """Regenerate the maze and refresh the display."""
+        self.game_started = True
         self.maze = generate_maze(self.n, self.m)
         self.player_x, self.player_y = 0, 0
         self.player_dir = Dir.RIGHT.value
+        self.game_over = False
+        self.regenerate_button.setText("New Maze")
         self.update()  # Refresh the GUI
 
     def restart_maze(self):
         """Reset player position and refresh the display."""
         self.player_x, self.player_y = 0, 0
         self.player_dir = Dir.RIGHT.value
+        self.game_over = False
         self.update()  # Refresh the GUI
 
     def movePlayer(self):
         """Update player position by moving forward"""
+        if not self.game_over:
+            px, py = self.player_x, self.player_y
+            pcell = self.maze[py][px]
 
-        px, py = self.player_x, self.player_y
-        pcell = self.maze[py][px]
+            direction = self.player_dir
 
-        direction = self.player_dir
+            match direction:
+                case Dir.UP.value:      # 0
+                    if not pcell['walls'][0]:
+                        self.send_command_to_rpi("forward")
+                        self.player_y -= 1
+                case Dir.RIGHT.value:   # 1 
+                    if not pcell['walls'][1]:
+                        self.send_command_to_rpi("forward")
+                        self.player_x += 1
+                case Dir.DOWN.value:    # 2
+                    if not pcell['walls'][2]:
+                        self.send_command_to_rpi("forward")
+                        self.player_y += 1
+                case Dir.LEFT.value:    # 3
+                    if not pcell['walls'][3]:
+                        self.send_command_to_rpi("forward")
+                        self.player_x -= 1
+                case _:
+                    print("Car is facing an invalid direction")
 
-        match direction:
-            case Dir.UP.value:      # 0
-                if not pcell['walls'][0]:
-                    self.send_command_to_rpi("forward")
-                    self.player_y -= 1
-            case Dir.RIGHT.value:   # 1 
-                if not pcell['walls'][1]:
-                    self.send_command_to_rpi("forward")
-                    self.player_x += 1
-            case Dir.DOWN.value:    # 2
-                if not pcell['walls'][2]:
-                    self.send_command_to_rpi("forward")
-                    self.player_y += 1
-            case Dir.LEFT.value:    # 3
-                if not pcell['walls'][3]:
-                    self.send_command_to_rpi("forward")
-                    self.player_x -= 1
-            case _:
-                print("Car is facing an invalid direction")
+            if self.player_x is (self.m - 1) and self.player_y is (self.n - 1):
+                self.game_over = True
 
-        self.update()
+            self.update()
 
     def rotatePlayer(self, direction):
         """Update player status by rotating left or right"""
         """0 = Rotate Left, 1 = Rotate Right"""
-        if direction == 0:      # Rotate left
-            self.send_command_to_rpi("left")
-            self.player_dir = (self.player_dir - 1) % 4
-        elif direction == 1:    # Rotate right\
-            self.send_command_to_rpi("right")
-            self.player_dir = (self.player_dir + 1) % 4
-        else:
-            print("Invalid rotation direction")
-        self.update()
+        if not self.game_over:
+            if direction == 0:      # Rotate left
+                self.send_command_to_rpi("left")
+                self.player_dir = (self.player_dir - 1) % 4
+            elif direction == 1:    # Rotate right\
+                self.send_command_to_rpi("right")
+                self.player_dir = (self.player_dir + 1) % 4
+            else:
+                print("Invalid rotation direction")
+            self.update()
 
 
     def keyPressEvent(self, event):
@@ -429,72 +439,88 @@ class MazeWindow(QMainWindow):
 
     def paintEvent(self, event):
         painter = QPainter(self)
+
         painter.setPen(Qt.NoPen)
         painter.setBrush(QColor(255, 250, 245))
         painter.drawRect(QRect(50, 50, 700, 700))
-        color_cell_offset = 15
 
-        # START square -- green
-        painter.setBrush(QColor(127, 255, 127))
-        painter.drawRect(QRect(50 + color_cell_offset, 50 + color_cell_offset, self.cell_size - (2 * color_cell_offset), self.cell_size - (2 * color_cell_offset)))
+        if not self.game_started:
+            # GAME BEGIN -- text
+            painter.setPen(QPen(QColor(0, 0, 0)))
+            painter.setFont(QFont("Arial", 16, QFont.Bold))
+            text_begin = 'Press "Start" to play'
+            text_begin_rect = painter.boundingRect(0, 0, 0, 0, Qt.AlignLeft, text_begin)
+            text_begin_x = (700 - text_begin_rect.width()) // 2
+            text_begin_y = (700 - text_begin_rect.height()) // 2
+            painter.drawText(50 + text_begin_x, 50 + text_begin_y + text_begin_rect.height(), text_begin)
+        else:
+            color_cell_offset = 15
 
-        # GOAL square -- red
-        painter.setBrush(QColor(255, 127, 127))
-        painter.drawRect(QRect(50 + ((self.m - 1) * self.cell_size) + color_cell_offset, 50 + ((self.n - 1) * self.cell_size) + color_cell_offset, self.cell_size - (2 * color_cell_offset), self.cell_size - (2 * color_cell_offset)))
+            # START square -- green
+            painter.setBrush(QColor(127, 255, 127))
+            painter.drawRect(QRect(50 + color_cell_offset, 50 + color_cell_offset, self.cell_size - (2 * color_cell_offset), self.cell_size - (2 * color_cell_offset)))
 
-        # START square -- text
-        painter.setPen(QPen(QColor(0, 0, 0)))
-        painter.setFont(QFont("Arial", 16, QFont.Bold))
-        text_start = "Start"
-        text_start_rect = painter.boundingRect(0, 0, 0, 0, Qt.AlignLeft, text_start)
-        #text_start_x = cx + self.cell_size // 2 - 18
-        #text_start_y = cy + self.cell_size // 5  # top of the cell
-        text_start_x = (self.cell_size - text_start_rect.width()) // 2
-        text_start_y = (self.cell_size - text_start_rect.height()) // 2
-        painter.drawText(50 + text_start_x, 50 + 50, text_start)
+            # GOAL square -- red
+            painter.setBrush(QColor(255, 127, 127))
+            painter.drawRect(QRect(50 + ((self.m - 1) * self.cell_size) + color_cell_offset, 50 + ((self.n - 1) * self.cell_size) + color_cell_offset, self.cell_size - (2 * color_cell_offset), self.cell_size - (2 * color_cell_offset)))
 
-        # GOAL square -- text
-        text_end = "Goal"
-        text_end_rect = painter.boundingRect(0, 0, 0, 0, Qt.AlignLeft, text_start)
-        #text_start_x = cx + self.cell_size // 2 - 18
-        #text_start_y = cy + self.cell_size // 5  # top of the cell
-        text_end_x = (self.cell_size - text_end_rect.width()) // 2
-        text_end_y = (self.cell_size - text_end_rect.height()) // 2
-        painter.drawText(50 + ((self.m - 1) * self.cell_size) + text_end_x, 50 + 50 + ((self.n - 1) * self.cell_size), text_end)
+            # START square -- text
+            painter.setPen(QPen(QColor(0, 0, 0)))
+            painter.setFont(QFont("Arial", 16, QFont.Bold))
+            text_start = "Start"
+            text_start_rect = painter.boundingRect(0, 0, 0, 0, Qt.AlignLeft, text_start)
+            text_start_x = (self.cell_size - text_start_rect.width()) // 2
+            text_start_y = (self.cell_size - text_start_rect.height()) // 2
+            painter.drawText(50 + text_start_x, 50 + 50, text_start)
 
-        # Prep for drawing maze walls
-        painter.setPen(QPen(Qt.black, 2))
+            # GOAL square -- text
+            text_end = "Goal"
+            text_end_rect = painter.boundingRect(0, 0, 0, 0, Qt.AlignLeft, text_start)
+            text_end_x = (self.cell_size - text_end_rect.width()) // 2
+            text_end_y = (self.cell_size - text_end_rect.height()) // 2
+            painter.drawText(50 + ((self.m - 1) * self.cell_size) + text_end_x, 50 + 50 + ((self.n - 1) * self.cell_size), text_end)
 
-        for x in range(self.n):
-            for y in range(self.m):
-                cell = self.maze[x][y]
-                cx, cy = 50 + y * self.cell_size, 50 + x * self.cell_size       # UI Padding to top and left
-                # cx, cy = y * self.cell_size, x * self.cell_size
-                if cell['walls'][0]:  # Top wall
-                    painter.drawLine(cx, cy, cx + self.cell_size, cy)
-                if cell['walls'][1]:  # Right wall
-                    painter.drawLine(cx + self.cell_size, cy, cx + self.cell_size, cy + self.cell_size)
-                if cell['walls'][2]:  # Bottom wall
-                    painter.drawLine(cx, cy + self.cell_size, cx + self.cell_size, cy + self.cell_size)
-                if cell['walls'][3]:  # Left wall
-                    painter.drawLine(cx, cy, cx, cy + self.cell_size)
+            # GAME OVER -- text
+            if self.game_over:
+                text_win = "You won!"
+                text_win_rect = painter.boundingRect(0, 0, 0, 0, Qt.AlignLeft, text_win)
+                text_win_x = (700 - text_win_rect.width()) // 2
+                text_win_y = (700 - text_win_rect.height()) // 2
+                painter.drawText(50 + text_win_x, 50 + text_win_y + text_win_rect.height(), text_win)
 
-        painter.setBrush(Qt.red)
-        player_pos = QPoint(50 + int(self.cell_size * (self.player_x + 0.5)), 50 + int(self.cell_size * (self.player_y + 0.5)))
+            # Prep for drawing maze walls
+            painter.setPen(QPen(Qt.black, 2))
 
-        arrow = QPolygon([
-            QPoint(player_pos.x(), player_pos.y() - 25),  # Top (point)
-            QPoint(player_pos.x() - 20, player_pos.y() + 25),  # Left (tail)
-            QPoint(player_pos.x(), player_pos.y() + 10), # Center
-            QPoint(player_pos.x() + 20, player_pos.y() + 25),  # Right (tail)
-        ])
+            for x in range(self.n):
+                for y in range(self.m):
+                    cell = self.maze[x][y]
+                    cx, cy = 50 + y * self.cell_size, 50 + x * self.cell_size       # UI Padding to top and left
+                    # cx, cy = y * self.cell_size, x * self.cell_size
+                    if cell['walls'][0]:  # Top wall
+                        painter.drawLine(cx, cy, cx + self.cell_size, cy)
+                    if cell['walls'][1]:  # Right wall
+                        painter.drawLine(cx + self.cell_size, cy, cx + self.cell_size, cy + self.cell_size)
+                    if cell['walls'][2]:  # Bottom wall
+                        painter.drawLine(cx, cy + self.cell_size, cx + self.cell_size, cy + self.cell_size)
+                    if cell['walls'][3]:  # Left wall
+                        painter.drawLine(cx, cy, cx, cy + self.cell_size)
 
-        painter.translate(player_pos)
-        painter.rotate(self.player_dir * 90)  # 0: North, 1: East, 2: South, 3: West
-        painter.translate(-player_pos)
-        painter.drawPolygon(arrow)
+            painter.setBrush(Qt.red)
+            player_pos = QPoint(50 + int(self.cell_size * (self.player_x + 0.5)), 50 + int(self.cell_size * (self.player_y + 0.5)))
 
-        # painter.setBrush(Qt.NoBrush)
+            arrow = QPolygon([
+                QPoint(player_pos.x(), player_pos.y() - 25),  # Top (point)
+                QPoint(player_pos.x() - 20, player_pos.y() + 25),  # Left (tail)
+                QPoint(player_pos.x(), player_pos.y() + 10), # Center
+                QPoint(player_pos.x() + 20, player_pos.y() + 25),  # Right (tail)
+            ])
+
+            painter.translate(player_pos)
+            painter.rotate(self.player_dir * 90)  # 0: North, 1: East, 2: South, 3: West
+            painter.translate(-player_pos)
+            painter.drawPolygon(arrow)
+
+            # painter.setBrush(Qt.NoBrush)
 
 # Running the application
 if __name__ == "__main__":
