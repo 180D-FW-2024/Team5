@@ -57,7 +57,8 @@ class MazeWindow(QMainWindow):
         self.setStyleSheet("background-color: antiquewhite;") 
         QTimer.singleShot(0, self.showMaximized)
         self.n, self.m = n, m  # Maze dimensions
-        self.cell_size = min(700 // n, 700 // m)  # Fit the maze into the window
+        self.maze_size = 600
+        self.cell_size = min(self.maze_size // n, self.maze_size // m)  # Fit the maze into the window
         self.game_started = False
         self.game_over = True
 
@@ -91,13 +92,13 @@ class MazeWindow(QMainWindow):
         # Add the regenerate button
         self.regenerate_button = QPushButton("Start", self)
         self.regenerate_button.setStyleSheet("background-color: #FFFAF5; color: black")
-        self.regenerate_button.setGeometry(50, 800, 200, 40)  # Position at bottom-left
+        self.regenerate_button.setGeometry(50, 700, 200, 40)  # Position at bottom-left
         self.regenerate_button.clicked.connect(self.regenerate_maze)
 
         # Add the restart button
         self.restart_button = QPushButton("Restart Current Maze", self)
         self.restart_button.setStyleSheet("background-color: #FFFAF5; color: black")
-        self.restart_button.setGeometry(50, 850, 200, 40)  # Position at bottom-left
+        self.restart_button.setGeometry(50, 750, 200, 40)  # Position at bottom-left
         self.restart_button.clicked.connect(self.restart_maze)
 
         # Add Camera Feed Label
@@ -128,7 +129,7 @@ class MazeWindow(QMainWindow):
         # Add a voice toggle button
         self.voice_toggle_button = QPushButton("Enable Voice Commands", self)
         self.voice_toggle_button.setStyleSheet("background-color: #FFFAF5; color: black")
-        self.voice_toggle_button.setGeometry(300, 800, 200, 40)  # Position at bottom-center
+        self.voice_toggle_button.setGeometry(300, 700, 200, 40)  # Position at bottom-center
         self.voice_toggle_button.setCheckable(True)
         self.voice_toggle_button.clicked.connect(self.toggle_voice_commands)
 
@@ -190,7 +191,7 @@ class MazeWindow(QMainWindow):
     def setup_dpad(self):
         """Set up D-Pad buttons for on-screen control"""
         dpad_center_x = 650
-        dpad_center_y = 825
+        dpad_center_y = 725
         dpad_button_width = 50
         dpad_button_height = 30
         dpad_button_margin = 10   # extra space between buttons
@@ -442,7 +443,7 @@ class MazeWindow(QMainWindow):
 
         painter.setPen(Qt.NoPen)
         painter.setBrush(QColor(255, 250, 245))
-        painter.drawRect(QRect(50, 50, 700, 700))
+        painter.drawRect(QRect(50, 50, self.maze_size, self.maze_size))
 
         if not self.game_started:
             # GAME BEGIN -- text
@@ -450,8 +451,8 @@ class MazeWindow(QMainWindow):
             painter.setFont(QFont("Arial", 16, QFont.Bold))
             text_begin = 'Press "Start" to play'
             text_begin_rect = painter.boundingRect(0, 0, 0, 0, Qt.AlignLeft, text_begin)
-            text_begin_x = (700 - text_begin_rect.width()) // 2
-            text_begin_y = (700 - text_begin_rect.height()) // 2
+            text_begin_x = (self.maze_size - text_begin_rect.width()) // 2
+            text_begin_y = (self.maze_size - text_begin_rect.height()) // 2
             painter.drawText(50 + text_begin_x, 50 + text_begin_y + text_begin_rect.height(), text_begin)
         else:
             color_cell_offset = 15
@@ -484,8 +485,8 @@ class MazeWindow(QMainWindow):
             if self.game_over:
                 text_win = "You won!"
                 text_win_rect = painter.boundingRect(0, 0, 0, 0, Qt.AlignLeft, text_win)
-                text_win_x = (700 - text_win_rect.width()) // 2
-                text_win_y = (700 - text_win_rect.height()) // 2
+                text_win_x = (self.maze_size - text_win_rect.width()) // 2
+                text_win_y = (self.maze_size - text_win_rect.height()) // 2
                 painter.drawText(50 + text_win_x, 50 + text_win_y + text_win_rect.height(), text_win)
 
             # Prep for drawing maze walls
