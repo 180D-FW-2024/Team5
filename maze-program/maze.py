@@ -12,7 +12,7 @@ import speech_recognition as sr
 import multiprocessing
 import struct
 import numpy as np
-import cv2
+# import cv2
 
 # Universal directions
 class Dir(Enum):
