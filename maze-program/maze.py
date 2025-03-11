@@ -90,13 +90,13 @@ class MazeWindow(QMainWindow):
 
         # Add the regenerate button
         self.regenerate_button = QPushButton("Start", self)
-        self.regenerate_button.setStyleSheet("background-color: #FFFAF5;")
+        self.regenerate_button.setStyleSheet("background-color: #FFFAF5; color: black")
         self.regenerate_button.setGeometry(50, 800, 200, 40)  # Position at bottom-left
         self.regenerate_button.clicked.connect(self.regenerate_maze)
 
         # Add the restart button
         self.restart_button = QPushButton("Restart Current Maze", self)
-        self.restart_button.setStyleSheet("background-color: #FFFAF5;")
+        self.restart_button.setStyleSheet("background-color: #FFFAF5; color: black")
         self.restart_button.setGeometry(50, 850, 200, 40)  # Position at bottom-left
         self.restart_button.clicked.connect(self.restart_maze)
 
@@ -127,7 +127,7 @@ class MazeWindow(QMainWindow):
 
         # Add a voice toggle button
         self.voice_toggle_button = QPushButton("Enable Voice Commands", self)
-        self.voice_toggle_button.setStyleSheet("background-color: #FFFAF5;")
+        self.voice_toggle_button.setStyleSheet("background-color: #FFFAF5; color: black")
         self.voice_toggle_button.setGeometry(300, 800, 200, 40)  # Position at bottom-center
         self.voice_toggle_button.setCheckable(True)
         self.voice_toggle_button.clicked.connect(self.toggle_voice_commands)
@@ -196,17 +196,17 @@ class MazeWindow(QMainWindow):
         dpad_button_margin = 10   # extra space between buttons
 
         self.left_button = QPushButton("↺", self)
-        self.left_button.setStyleSheet("background-color: #FFFAF5;")
+        self.left_button.setStyleSheet("background-color: #FFFAF5; color: black")
         self.left_button.setGeometry(dpad_center_x - int(1.5 * dpad_button_width) - dpad_button_margin, dpad_center_y - int(0.5 * dpad_button_height), dpad_button_width, dpad_button_height)
         self.left_button.clicked.connect(lambda: self.rotatePlayer(0))
 
         self.up_button = QPushButton("↑", self)
-        self.up_button.setStyleSheet("background-color: #FFFAF5;")
+        self.up_button.setStyleSheet("background-color: #FFFAF5; color: black")
         self.up_button.setGeometry(dpad_center_x - int(0.5 * dpad_button_width), dpad_center_y - int(1.5 * dpad_button_height) - dpad_button_margin, dpad_button_width, dpad_button_height)
         self.up_button.clicked.connect(lambda: self.movePlayer())
 
         self.right_button = QPushButton("↻", self)
-        self.right_button.setStyleSheet("background-color: #FFFAF5;")
+        self.right_button.setStyleSheet("background-color: #FFFAF5; color: black")
         self.right_button.setGeometry(dpad_center_x + int(0.5 * dpad_button_width) + dpad_button_margin, dpad_center_y - int(0.5 * dpad_button_height), dpad_button_width, dpad_button_height)
         self.right_button.clicked.connect(lambda: self.rotatePlayer(1))
 
