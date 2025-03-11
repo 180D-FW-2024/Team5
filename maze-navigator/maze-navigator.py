@@ -66,21 +66,43 @@ def forward():
     set_speed(DRIVE_SPEED)
     
     check_interval = 0.011  # ~90 Hz checking rate
+    max_time = 2.0  # Maximum time to move forward (2 seconds)
+    start_time = time.time()
+    missed_frames = 0
+    max_missed_frames = 3
 
-    time.sleep(0.3)
+    time.sleep(0.25) # Intial delay
     
     try:
         while True:
-            # Capture frame
-            frame = picam2.capture_array()
-            
-            # Check for line
-            if detect_line(frame):
-                print("Line detected - stopping")
+            # Safety check for maximum travel distance
+            if time.time() - start_time > max_time:
+                print("Maximum travel time reached")
                 stop()
-                return True
+                return False
+
+            try:
+                # Capture frame
+                frame = picam2.capture_array()
                 
-            # time.sleep(check_interval)
+                # Check for line
+                if detect_line(frame):
+                    print("Line detected - stopping")
+                    stop()
+                    return True
+                
+                # Reset missed frames counter on successful capture
+                missed_frames = 0
+                
+            except Exception as e:
+                missed_frames += 1
+                print(f"Frame error {missed_frames}: {e}")
+                if missed_frames >= max_missed_frames:
+                    print("Too many missed frames - stopping")
+                    stop()
+                    return False
+            
+            time.sleep(check_interval)
             
     except Exception as e:
         print(f"Error in line detection: {e}")
