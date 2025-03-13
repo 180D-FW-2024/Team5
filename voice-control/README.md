@@ -1,15 +1,1 @@
-Local voice controls without TCP integration.
-
-requirements:
-
-SpeechRecognition -> pip install speechrecognition
-
-pyaudio -> pip install pyaudio
-
-portaudio -> brew install portaudio
-
-OpenAI Whisper -> pip install -U openai-whisper
-
-ffmpeg -> brew install ffmpeg
-
-pip install torch torchvision torchaudio
+***Local version for development only. Current voice integration is contained inside of maze.py***
