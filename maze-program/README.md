@@ -11,3 +11,7 @@ The program does the following:
     - New Maze: Restart game with new maze layout.
     - Enable/Disable Voice Commands: Toggles voice control functionality.
     - Arrows: Allows the player to control Maze Navigator using GUI.
+
+No known bugs.
+
+For future improvements, we would want to add a reset position button. This would automatically move the Maze Navigator back to starting square and would eliminate the need to manually put it back.
